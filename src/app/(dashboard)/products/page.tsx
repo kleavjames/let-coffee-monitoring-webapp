@@ -51,10 +51,12 @@ import {
 import {
   computeMarginPercent,
   computeProductCost,
+  computeRecipeItemCost,
   formatCurrency,
 } from "@/lib/costing"
 import { useIngredients, useProducts } from "@/lib/data-provider"
 import type { Product } from "@/lib/types"
+import { formatRecipeQuantity } from "@/lib/units"
 
 export default function ProductsPage() {
   const { items: products, add, update, remove } = useProducts()
@@ -146,15 +148,21 @@ export default function ProductsPage() {
                       <TableCell className="text-muted-foreground">
                         {product.category}
                       </TableCell>
-                      <TableCell>{formatCurrency(product.price)}</TableCell>
-                      <TableCell>{formatCurrency(cost)}</TableCell>
+                      <TableCell className="font-mono">
+                        {formatCurrency(product.price)}
+                      </TableCell>
+                      <TableCell className="font-mono">
+                        {formatCurrency(cost)}
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={
                             marginPercent >= 0 ? "secondary" : "destructive"
                           }
                         >
-                          {marginPercent.toFixed(0)}%
+                          <span className="font-mono">
+                            {marginPercent.toFixed(0)}%
+                          </span>
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -181,11 +189,14 @@ export default function ProductsPage() {
                                       className="flex items-center justify-between gap-2"
                                     >
                                       <span>{ingredient.name}</span>
-                                      <span className="text-muted-foreground">
-                                        {item.quantity} {ingredient.unit} ·{" "}
+                                      <span className="font-mono text-muted-foreground">
+                                        {formatRecipeQuantity(
+                                          item,
+                                          ingredient.unit
+                                        )}{" "}
+                                        ·{" "}
                                         {formatCurrency(
-                                          ingredient.costPerUnit *
-                                            item.quantity
+                                          computeRecipeItemCost(item, ingredient)
                                         )}
                                       </span>
                                     </div>

@@ -8,10 +8,66 @@ import {
   seedProducts,
   seedSales,
 } from "@/lib/mock-data"
-import type { Expense, Ingredient, Product, Sale } from "@/lib/types"
+import type { Expense, Ingredient, IngredientUnit, Product, Sale } from "@/lib/types"
+import { normalizeRecipeItem } from "@/lib/units"
 
 const STORAGE_KEY = "let-coffee-tracker:data"
 
+type LegacyIngredient = {
+  id: string
+  name: string
+  unit: IngredientUnit
+  costPerUnit?: number
+  purchasePrice?: number
+  packageQuantity?: number
+  stockQuantity?: number
+}
+
+function normalizeIngredient(raw: LegacyIngredient): Ingredient {
+  if (
+    raw.purchasePrice !== undefined &&
+    raw.packageQuantity !== undefined &&
+    raw.packageQuantity > 0
+  ) {
+    return {
+      id: raw.id,
+      name: raw.name,
+      unit: raw.unit,
+      purchasePrice: raw.purchasePrice,
+      packageQuantity: raw.packageQuantity,
+      stockQuantity: raw.stockQuantity,
+    }
+  }
+
+  const costPerUnit = raw.costPerUnit ?? 0
+  const packageQuantity =
+    raw.packageQuantity ?? (raw.unit === "pcs" ? 100 : 1000)
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    unit: raw.unit,
+    purchasePrice: costPerUnit * packageQuantity,
+    packageQuantity,
+    stockQuantity: raw.stockQuantity,
+  }
+}
+
+function normalizeProducts(
+  products: Product[],
+  ingredients: Ingredient[]
+): Product[] {
+  const ingredientById = new Map(ingredients.map((ingredient) => [ingredient.id, ingredient]))
+
+  return products.map((product) => ({
+    ...product,
+    recipe: product.recipe.map((item) => {
+      const ingredient = ingredientById.get(item.ingredientId)
+      if (!ingredient) return item
+      return normalizeRecipeItem(item, ingredient.unit)
+    }),
+  }))
+}
 type StoredData = {
   products: Product[]
   ingredients: Ingredient[]
@@ -58,8 +114,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       const raw = window.localStorage.getItem(STORAGE_KEY)
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<StoredData>
-        if (parsed.products) setProducts(parsed.products)
-        if (parsed.ingredients) setIngredients(parsed.ingredients)
+        const normalizedIngredients = parsed.ingredients
+          ? parsed.ingredients.map(normalizeIngredient)
+          : seedIngredients
+        if (parsed.ingredients) {
+          setIngredients(normalizedIngredients)
+        }
+        if (parsed.products) {
+          setProducts(normalizeProducts(parsed.products, normalizedIngredients))
+        }
         if (parsed.sales) setSales(parsed.sales)
         if (parsed.expenses) setExpenses(parsed.expenses)
       }

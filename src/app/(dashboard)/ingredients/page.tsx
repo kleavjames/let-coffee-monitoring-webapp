@@ -42,7 +42,7 @@ import {
   IngredientFormDialog,
   type IngredientFormValues,
 } from "@/components/ingredients/ingredient-form-dialog"
-import { formatCurrency } from "@/lib/costing"
+import { formatCurrency, getIngredientCostPerUnit } from "@/lib/costing"
 import { useIngredients } from "@/lib/data-provider"
 import type { Ingredient } from "@/lib/types"
 
@@ -127,16 +127,22 @@ export default function IngredientsPage() {
                     <TableCell>
                       <Badge variant="outline">{ingredient.unit}</Badge>
                     </TableCell>
-                    <TableCell>
-                      {formatCurrency(ingredient.costPerUnit)}
+                    <TableCell className="font-mono">
+                      {formatCurrency(getIngredientCostPerUnit(ingredient))}
                       <span className="text-muted-foreground">
                         {" "}
                         / {ingredient.unit}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      {ingredient.stockQuantity.toLocaleString()}{" "}
-                      {ingredient.unit}
+                    <TableCell className="font-mono">
+                      {ingredient.stockQuantity !== undefined ? (
+                        <>
+                          {ingredient.stockQuantity.toLocaleString()}{" "}
+                          {ingredient.unit}
+                        </>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>

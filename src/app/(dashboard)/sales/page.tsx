@@ -86,7 +86,7 @@ export default function SalesPage() {
               <CardTitle>Sales</CardTitle>
               <CardDescription>
                 {sortedSales.length} record(s) · Total{" "}
-                {formatCurrency(totalSales)}
+                <span className="font-mono">{formatCurrency(totalSales)}</span>
               </CardDescription>
               <CardAction>
                 <Button onClick={() => setSaleFormOpen(true)}>
@@ -124,15 +124,19 @@ export default function SalesPage() {
                       )
                       return (
                         <TableRow key={sale.id}>
-                          <TableCell>{sale.date}</TableCell>
+                          <TableCell className="font-mono text-muted-foreground">
+                            {sale.date}
+                          </TableCell>
                           <TableCell className="font-medium">
                             {product?.name ?? "Unknown product"}
                           </TableCell>
-                          <TableCell>{sale.quantity}</TableCell>
-                          <TableCell>
+                          <TableCell className="font-mono">
+                            {sale.quantity}
+                          </TableCell>
+                          <TableCell className="font-mono">
                             {formatCurrency(sale.unitPrice)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="font-mono">
                             {formatCurrency(sale.quantity * sale.unitPrice)}
                           </TableCell>
                           <TableCell>
@@ -161,7 +165,9 @@ export default function SalesPage() {
               <CardTitle>Expenses</CardTitle>
               <CardDescription>
                 {sortedExpenses.length} record(s) · Total{" "}
-                {formatCurrency(totalExpenses)}
+                <span className="font-mono">
+                  {formatCurrency(totalExpenses)}
+                </span>
               </CardDescription>
               <CardAction>
                 <Button onClick={() => setExpenseFormOpen(true)}>
@@ -194,14 +200,16 @@ export default function SalesPage() {
                   ) : (
                     sortedExpenses.map((expense) => (
                       <TableRow key={expense.id}>
-                        <TableCell>{expense.date}</TableCell>
+                        <TableCell className="font-mono text-muted-foreground">
+                          {expense.date}
+                        </TableCell>
                         <TableCell className="font-medium">
                           {expense.category}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {expense.description}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="font-mono">
                           {formatCurrency(expense.amount)}
                         </TableCell>
                         <TableCell>

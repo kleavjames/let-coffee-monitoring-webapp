@@ -99,7 +99,7 @@ export default function DashboardPage() {
           <Card key={card.label}>
             <CardHeader>
               <CardDescription>{card.label}</CardDescription>
-              <CardTitle className="text-2xl font-semibold">
+              <CardTitle className="font-mono text-2xl font-semibold tracking-tight">
                 {card.value}
               </CardTitle>
               <CardAction>
@@ -109,7 +109,7 @@ export default function DashboardPage() {
                   ) : (
                     <ArrowDownRight data-icon="inline-start" />
                   )}
-                  {card.trend}
+                  <span className="font-mono">{card.trend}</span>
                 </Badge>
               </CardAction>
             </CardHeader>
@@ -187,9 +187,11 @@ export default function DashboardPage() {
               {recentSales.map((sale) => (
                 <TableRow key={sale.id}>
                   <TableCell className="font-medium">{sale.product}</TableCell>
-                  <TableCell>{sale.quantity}</TableCell>
-                  <TableCell>{formatCurrency(sale.total)}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">
+                  <TableCell className="font-mono">{sale.quantity}</TableCell>
+                  <TableCell className="font-mono">
+                    {formatCurrency(sale.total)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-muted-foreground">
                     {sale.date}
                   </TableCell>
                 </TableRow>

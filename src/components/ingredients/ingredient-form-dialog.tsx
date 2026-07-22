@@ -26,6 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { formatCurrency, getIngredientCostPerUnit } from "@/lib/costing"
 import type { Ingredient, IngredientUnit } from "@/lib/types"
 
 const unitItems: { label: string; value: IngredientUnit }[] = [
@@ -41,8 +42,8 @@ export type IngredientFormValues = Omit<Ingredient, "id">
 const emptyValues: IngredientFormValues = {
   name: "",
   unit: "g",
-  costPerUnit: 0,
-  stockQuantity: 0,
+  purchasePrice: 0,
+  packageQuantity: 0,
 }
 
 export function IngredientFormDialog({
@@ -84,18 +85,40 @@ function IngredientForm({
       ? {
           name: ingredient.name,
           unit: ingredient.unit,
-          costPerUnit: ingredient.costPerUnit,
+          purchasePrice: ingredient.purchasePrice,
+          packageQuantity: ingredient.packageQuantity,
           stockQuantity: ingredient.stockQuantity,
         }
       : emptyValues
   )
+  const [stockInput, setStockInput] = React.useState(() =>
+    ingredient?.stockQuantity !== undefined
+      ? String(ingredient.stockQuantity)
+      : ""
+  )
 
   const isEditing = Boolean(ingredient)
 
+  const costPerUnit =
+    values.packageQuantity > 0
+      ? getIngredientCostPerUnit(values)
+      : null
+
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (!values.name.trim()) return
-    onSubmit(values)
+    if (!values.name.trim() || values.purchasePrice <= 0) return
+    if (values.packageQuantity <= 0) return
+
+    const stockQuantity =
+      stockInput.trim() === "" ? undefined : Number(stockInput)
+
+    onSubmit({
+      ...values,
+      stockQuantity:
+        stockQuantity !== undefined && !Number.isNaN(stockQuantity)
+          ? stockQuantity
+          : undefined,
+    })
     onOpenChange(false)
   }
 
@@ -107,8 +130,8 @@ function IngredientForm({
         </DialogTitle>
         <DialogDescription>
           {isEditing
-            ? "Update the ingredient details below."
-            : "Add a new ingredient to use in product recipes."}
+            ? "Update how you buy this ingredient. Cost per unit is calculated automatically."
+            : "Enter what you paid and how much you got. We'll calculate the cost per unit for recipes."}
         </DialogDescription>
       </DialogHeader>
       <FieldGroup className="py-4">
@@ -124,70 +147,111 @@ function IngredientForm({
             required
           />
         </Field>
+        <Field>
+          <FieldLabel htmlFor="ingredient-unit">Recipe unit</FieldLabel>
+          <Select
+            items={unitItems}
+            value={values.unit}
+            onValueChange={(value) =>
+              setValues((v) => ({
+                ...v,
+                unit: value as IngredientUnit,
+              }))
+            }
+          >
+            <SelectTrigger id="ingredient-unit" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {unitItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+          <FieldDescription>
+            How this ingredient is measured in product recipes.
+          </FieldDescription>
+        </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field>
-            <FieldLabel htmlFor="ingredient-unit">Unit</FieldLabel>
-            <Select
-              items={unitItems}
-              value={values.unit}
-              onValueChange={(value) =>
-                setValues((v) => ({
-                  ...v,
-                  unit: value as IngredientUnit,
-                }))
-              }
-            >
-              <SelectTrigger id="ingredient-unit" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {unitItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="ingredient-cost">Cost per unit</FieldLabel>
+            <FieldLabel htmlFor="ingredient-purchase-price">
+              Purchase price
+            </FieldLabel>
             <Input
-              id="ingredient-cost"
+              id="ingredient-purchase-price"
               type="number"
               min={0}
               step="0.01"
-              value={values.costPerUnit}
+              value={values.purchasePrice || ""}
               onChange={(e) =>
                 setValues((v) => ({
                   ...v,
-                  costPerUnit: Number(e.target.value),
+                  purchasePrice: Number(e.target.value),
                 }))
               }
+              placeholder="e.g. 850"
               required
             />
           </Field>
+          <Field>
+            <FieldLabel htmlFor="ingredient-package-quantity">
+              Package size
+            </FieldLabel>
+            <div className="flex items-center gap-2">
+              <Input
+                id="ingredient-package-quantity"
+                type="number"
+                min={0}
+                step="0.01"
+                value={values.packageQuantity || ""}
+                onChange={(e) =>
+                  setValues((v) => ({
+                    ...v,
+                    packageQuantity: Number(e.target.value),
+                  }))
+                }
+                placeholder="e.g. 1000"
+                required
+                className="flex-1"
+              />
+              <span className="shrink-0 text-sm text-muted-foreground">
+                {values.unit}
+              </span>
+            </div>
+          </Field>
         </div>
+        {costPerUnit !== null && (
+          <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Cost: </span>
+            <span className="font-medium">
+              {formatCurrency(costPerUnit)} / {values.unit}
+            </span>
+          </div>
+        )}
         <Field>
-          <FieldLabel htmlFor="ingredient-stock">Stock quantity</FieldLabel>
-          <Input
-            id="ingredient-stock"
-            type="number"
-            min={0}
-            step="1"
-            value={values.stockQuantity}
-            onChange={(e) =>
-              setValues((v) => ({
-                ...v,
-                stockQuantity: Number(e.target.value),
-              }))
-            }
-            required
-          />
-          <FieldDescription>
-            Current quantity on hand, in the unit selected above.
-          </FieldDescription>
+          <FieldLabel htmlFor="ingredient-stock">
+            Stock on hand{" "}
+            <span className="font-normal text-muted-foreground">(optional)</span>
+          </FieldLabel>
+          <div className="flex items-center gap-2">
+            <Input
+              id="ingredient-stock"
+              type="number"
+              min={0}
+              step="1"
+              value={stockInput}
+              onChange={(e) => setStockInput(e.target.value)}
+              placeholder="Leave blank if not tracking"
+              className="flex-1"
+            />
+            <span className="shrink-0 text-sm text-muted-foreground">
+              {values.unit}
+            </span>
+          </div>
         </Field>
       </FieldGroup>
       <DialogFooter>

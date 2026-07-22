@@ -4,13 +4,17 @@ export type Ingredient = {
   id: string
   name: string
   unit: IngredientUnit
-  costPerUnit: number
-  stockQuantity: number
+  purchasePrice: number
+  packageQuantity: number
+  stockQuantity?: number
 }
+
+export type RecipeDisplayUnit = "g" | "ml" | "oz"
 
 export type RecipeItem = {
   ingredientId: string
   quantity: number
+  unit?: RecipeDisplayUnit
 }
 
 export type ProductStatus = "active" | "inactive"

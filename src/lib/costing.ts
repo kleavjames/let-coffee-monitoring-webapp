@@ -1,4 +1,24 @@
-import type { Ingredient, Product } from "@/lib/types"
+import type { Ingredient, Product, RecipeItem } from "@/lib/types"
+import { toIngredientQuantity } from "@/lib/units"
+
+export function getIngredientCostPerUnit(
+  ingredient: Pick<Ingredient, "purchasePrice" | "packageQuantity">
+): number {
+  if (ingredient.packageQuantity <= 0) return 0
+  return ingredient.purchasePrice / ingredient.packageQuantity
+}
+
+export function computeRecipeItemCost(
+  item: RecipeItem,
+  ingredient: Ingredient
+): number {
+  const quantityInIngredientUnit = toIngredientQuantity(
+    item.quantity,
+    item.unit,
+    ingredient.unit
+  )
+  return getIngredientCostPerUnit(ingredient) * quantityInIngredientUnit
+}
 
 export function computeProductCost(
   product: Pick<Product, "recipe">,
@@ -7,7 +27,7 @@ export function computeProductCost(
   return product.recipe.reduce((total, item) => {
     const ingredient = ingredients.find((i) => i.id === item.ingredientId)
     if (!ingredient) return total
-    return total + ingredient.costPerUnit * item.quantity
+    return total + computeRecipeItemCost(item, ingredient)
   }, 0)
 }
 

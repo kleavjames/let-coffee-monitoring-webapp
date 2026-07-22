@@ -31,10 +31,21 @@ import {
 import {
   computeMarginPercent,
   computeProductCost,
+  computeRecipeItemCost,
   formatCurrency,
 } from "@/lib/costing"
 import { useIngredients } from "@/lib/data-provider"
-import type { Product, ProductStatus, RecipeItem } from "@/lib/types"
+import type {
+  Product,
+  ProductStatus,
+  RecipeDisplayUnit,
+  RecipeItem,
+} from "@/lib/types"
+import {
+  formatRecipeQuantity,
+  getDefaultRecipeUnit,
+  getRecipeUnitOptions,
+} from "@/lib/units"
 
 export type ProductFormValues = Omit<Product, "id">
 
@@ -50,6 +61,12 @@ const statusItems: { label: string; value: ProductStatus }[] = [
   { label: "Active", value: "active" },
   { label: "Inactive", value: "inactive" },
 ]
+
+const recipeUnitLabels: Record<RecipeDisplayUnit, string> = {
+  g: "g",
+  ml: "ml",
+  oz: "oz",
+}
 
 export function ProductFormDialog({
   open,
@@ -101,8 +118,21 @@ function ProductForm({
     string | null
   >(null)
   const [pickerQuantity, setPickerQuantity] = React.useState(0)
+  const [pickerUnit, setPickerUnit] = React.useState<RecipeDisplayUnit>("g")
 
   const isEditing = Boolean(product)
+
+  const pickerIngredient = ingredients.find(
+    (ingredient) => ingredient.id === pickerIngredientId
+  )
+  const pickerUnitOptions = pickerIngredient
+    ? getRecipeUnitOptions(pickerIngredient.unit)
+    : (["g", "ml", "oz"] as RecipeDisplayUnit[])
+
+  const pickerUnitItems = pickerUnitOptions.map((unit) => ({
+    label: recipeUnitLabels[unit],
+    value: unit,
+  }))
 
   const availableIngredients = ingredients.filter(
     (ingredient) =>
@@ -121,14 +151,27 @@ function ProductForm({
   const marginPercent = computeMarginPercent(values, ingredients)
 
   function handleAddRecipeItem() {
-    if (!pickerIngredientId || pickerQuantity <= 0) return
+    if (!pickerIngredientId || pickerQuantity <= 0 || !pickerIngredient) return
     const newItem: RecipeItem = {
       ingredientId: pickerIngredientId,
       quantity: pickerQuantity,
+      ...(pickerIngredient.unit !== "pcs" && { unit: pickerUnit }),
     }
     setValues((v) => ({ ...v, recipe: [...v.recipe, newItem] }))
     setPickerIngredientId(null)
     setPickerQuantity(0)
+    setPickerUnit("g")
+  }
+
+  function handlePickerIngredientChange(ingredientId: string | null) {
+    setPickerIngredientId(ingredientId)
+    if (!ingredientId) return
+
+    const ingredient = ingredients.find((item) => item.id === ingredientId)
+    if (!ingredient) return
+
+    const defaultUnit = getDefaultRecipeUnit(ingredient.unit)
+    if (defaultUnit) setPickerUnit(defaultUnit)
   }
 
   function handleRemoveRecipeItem(ingredientId: string) {
@@ -248,10 +291,8 @@ function ProductForm({
                   >
                     <span className="font-medium">{ingredient.name}</span>
                     <span className="text-muted-foreground">
-                      {item.quantity} {ingredient.unit} ·{" "}
-                      {formatCurrency(
-                        ingredient.costPerUnit * item.quantity
-                      )}
+                      {formatRecipeQuantity(item, ingredient.unit)} ·{" "}
+                      {formatCurrency(computeRecipeItemCost(item, ingredient))}
                     </span>
                     <Button
                       type="button"
@@ -276,7 +317,7 @@ function ProductForm({
                 items={ingredientPickerItems}
                 value={pickerIngredientId}
                 onValueChange={(value) =>
-                  setPickerIngredientId(value as string | null)
+                  handlePickerIngredientChange(value as string | null)
                 }
               >
                 <SelectTrigger className="w-full">
@@ -305,6 +346,28 @@ function ProductForm({
               value={pickerQuantity || ""}
               onChange={(e) => setPickerQuantity(Number(e.target.value))}
             />
+            {pickerUnitOptions.length > 0 && (
+              <Select
+                items={pickerUnitItems}
+                value={pickerUnit}
+                onValueChange={(value) =>
+                  setPickerUnit(value as RecipeDisplayUnit)
+                }
+              >
+                <SelectTrigger className="w-18">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {pickerUnitItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            )}
             <Button
               type="button"
               variant="outline"

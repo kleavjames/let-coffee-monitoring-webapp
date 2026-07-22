@@ -37,7 +37,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               render={<Link href="/" />}
             >
               <Coffee className="size-5!" />
-              <span className="text-base font-semibold">Let Coffee</span>
+              <span className="text-base font-semibold tracking-tight">
+                Let Coffee
+              </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -71,11 +73,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex flex-col gap-0.5 px-2 py-1.5 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
-              <span className="font-medium text-sidebar-foreground">
-                Coffee Sales Tracker
+            <div className="flex flex-col gap-1 px-2 py-1.5 group-data-[collapsible=icon]:hidden">
+              <span className="text-xs font-medium text-sidebar-foreground">
+                Built for the remote grind
               </span>
-              <span>Local data only</span>
+              <span className="font-mono text-[10px] tracking-wide text-sidebar-foreground/60 uppercase">
+                v0.1 · local data only
+              </span>
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
