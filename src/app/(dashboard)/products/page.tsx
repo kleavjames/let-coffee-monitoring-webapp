@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { MoreHorizontal, Plus } from "lucide-react"
-import { toast } from "sonner"
+import * as React from "react";
+import { MoreHorizontal, Plus } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   AlertDialog,
@@ -13,9 +13,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardAction,
@@ -23,19 +23,19 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Popover,
   PopoverContent,
   PopoverTitle,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -43,55 +43,55 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   ProductFormDialog,
   type ProductFormValues,
-} from "@/components/products/product-form-dialog"
+} from "@/components/products/product-form-dialog";
 import {
   computeMarginPercent,
   computeProductCost,
   computeRecipeItemCost,
   formatCurrency,
-} from "@/lib/costing"
-import { useIngredients, useProducts } from "@/lib/data-provider"
-import type { Product } from "@/lib/types"
-import { formatRecipeQuantity } from "@/lib/units"
+} from "@/lib/costing";
+import { useIngredients, useProducts } from "@/lib/data-provider";
+import type { Product } from "@/lib/types";
+import { formatRecipeQuantity } from "@/lib/units";
 
 export default function ProductsPage() {
-  const { items: products, add, update, remove } = useProducts()
-  const { items: ingredients } = useIngredients()
-  const [formOpen, setFormOpen] = React.useState(false)
+  const { items: products, add, update, remove } = useProducts();
+  const { items: ingredients } = useIngredients();
+  const [formOpen, setFormOpen] = React.useState(false);
   const [editingProduct, setEditingProduct] = React.useState<Product | null>(
-    null
-  )
-  const [deleteTarget, setDeleteTarget] = React.useState<Product | null>(null)
+    null,
+  );
+  const [deleteTarget, setDeleteTarget] = React.useState<Product | null>(null);
 
   function handleAddClick() {
-    setEditingProduct(null)
-    setFormOpen(true)
+    setEditingProduct(null);
+    setFormOpen(true);
   }
 
   function handleEditClick(product: Product) {
-    setEditingProduct(product)
-    setFormOpen(true)
+    setEditingProduct(product);
+    setFormOpen(true);
   }
 
   function handleSubmit(values: ProductFormValues) {
     if (editingProduct) {
-      update(editingProduct.id, values)
-      toast.success(`${values.name} updated`)
+      update(editingProduct.id, values);
+      toast.success(`${values.name} updated`);
     } else {
-      add(values)
-      toast.success(`${values.name} added`)
+      add(values);
+      toast.success(`${values.name} added`);
     }
   }
 
   function handleDeleteConfirm() {
-    if (!deleteTarget) return
-    remove(deleteTarget.id)
-    toast.success(`${deleteTarget.name} deleted`)
-    setDeleteTarget(null)
+    if (!deleteTarget) return;
+    remove(deleteTarget.id);
+    toast.success(`${deleteTarget.name} deleted`);
+    setDeleteTarget(null);
   }
 
   return (
@@ -135,11 +135,11 @@ export default function ProductsPage() {
                 </TableRow>
               ) : (
                 products.map((product) => {
-                  const cost = computeProductCost(product, ingredients)
+                  const cost = computeProductCost(product, ingredients);
                   const marginPercent = computeMarginPercent(
                     product,
-                    ingredients
-                  )
+                    ingredients,
+                  );
                   return (
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">
@@ -180,9 +180,9 @@ export default function ProductsPage() {
                               <div className="flex flex-col gap-1.5">
                                 {product.recipe.map((item) => {
                                   const ingredient = ingredients.find(
-                                    (i) => i.id === item.ingredientId
-                                  )
-                                  if (!ingredient) return null
+                                    (i) => i.id === item.ingredientId,
+                                  );
+                                  if (!ingredient) return null;
                                   return (
                                     <div
                                       key={item.ingredientId}
@@ -192,15 +192,18 @@ export default function ProductsPage() {
                                       <span className="font-mono text-muted-foreground">
                                         {formatRecipeQuantity(
                                           item,
-                                          ingredient.unit
+                                          ingredient.unit,
                                         )}{" "}
                                         ·{" "}
                                         {formatCurrency(
-                                          computeRecipeItemCost(item, ingredient)
+                                          computeRecipeItemCost(
+                                            item,
+                                            ingredient,
+                                          ),
                                         )}
                                       </span>
                                     </div>
-                                  )
+                                  );
                                 })}
                               </div>
                             )}
@@ -242,7 +245,7 @@ export default function ProductsPage() {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  )
+                  );
                 })
               )}
             </TableBody>
@@ -260,15 +263,15 @@ export default function ProductsPage() {
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null)
+          if (!open) setDeleteTarget(null);
         }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete product?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently remove &quot;{deleteTarget?.name}&quot;
-              from your product list.
+              This will permanently remove &quot;{deleteTarget?.name}&quot; from
+              your product list.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -283,5 +286,5 @@ export default function ProductsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }
