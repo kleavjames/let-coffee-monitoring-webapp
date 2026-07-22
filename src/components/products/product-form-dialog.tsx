@@ -36,15 +36,16 @@ import {
 } from "@/lib/costing"
 import { useIngredients } from "@/lib/data-provider"
 import type {
+  Ingredient,
   Product,
   ProductStatus,
   RecipeDisplayUnit,
   RecipeItem,
 } from "@/lib/types"
 import {
-  formatRecipeQuantity,
   getDefaultRecipeUnit,
   getRecipeUnitOptions,
+  isCountUnit,
 } from "@/lib/units"
 
 export type ProductFormValues = Omit<Product, "id">
@@ -155,7 +156,7 @@ function ProductForm({
     const newItem: RecipeItem = {
       ingredientId: pickerIngredientId,
       quantity: pickerQuantity,
-      ...(pickerIngredient.unit !== "pcs" && { unit: pickerUnit }),
+      ...( !isCountUnit(pickerIngredient.unit) && { unit: pickerUnit }),
     }
     setValues((v) => ({ ...v, recipe: [...v.recipe, newItem] }))
     setPickerIngredientId(null)
@@ -178,6 +179,18 @@ function ProductForm({
     setValues((v) => ({
       ...v,
       recipe: v.recipe.filter((item) => item.ingredientId !== ingredientId),
+    }))
+  }
+
+  function handleUpdateRecipeItem(
+    ingredientId: string,
+    updates: Partial<Pick<RecipeItem, "quantity" | "unit">>
+  ) {
+    setValues((v) => ({
+      ...v,
+      recipe: v.recipe.map((item) =>
+        item.ingredientId === ingredientId ? { ...item, ...updates } : item
+      ),
     }))
   }
 
@@ -285,27 +298,17 @@ function ProductForm({
                 )
                 if (!ingredient) return null
                 return (
-                  <div
+                  <RecipeItemRow
                     key={item.ingredientId}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-border px-2.5 py-1.5 text-sm"
-                  >
-                    <span className="font-medium">{ingredient.name}</span>
-                    <span className="text-muted-foreground">
-                      {formatRecipeQuantity(item, ingredient.unit)} ·{" "}
-                      {formatCurrency(computeRecipeItemCost(item, ingredient))}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
-                      onClick={() =>
-                        handleRemoveRecipeItem(item.ingredientId)
-                      }
-                    >
-                      <X />
-                      <span className="sr-only">Remove</span>
-                    </Button>
-                  </div>
+                    item={item}
+                    ingredient={ingredient}
+                    onUpdate={(updates) =>
+                      handleUpdateRecipeItem(item.ingredientId, updates)
+                    }
+                    onRemove={() =>
+                      handleRemoveRecipeItem(item.ingredientId)
+                    }
+                  />
                 )
               })}
             </div>
@@ -396,5 +399,86 @@ function ProductForm({
         </Button>
       </DialogFooter>
     </form>
+  )
+}
+
+function RecipeItemRow({
+  item,
+  ingredient,
+  onUpdate,
+  onRemove,
+}: {
+  item: RecipeItem
+  ingredient: Ingredient
+  onUpdate: (
+    updates: Partial<Pick<RecipeItem, "quantity" | "unit">>
+  ) => void
+  onRemove: () => void
+}) {
+  const unitOptions = getRecipeUnitOptions(ingredient.unit)
+  const unitItems = unitOptions.map((unit) => ({
+    label: recipeUnitLabels[unit],
+    value: unit,
+  }))
+  const resolvedUnit =
+    item.unit ?? getDefaultRecipeUnit(ingredient.unit) ?? "g"
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 text-sm">
+      <span className="min-w-0 flex-1 truncate font-medium">
+        {ingredient.name}
+      </span>
+      <Input
+        type="number"
+        min={0}
+        step="0.01"
+        aria-label={`${ingredient.name} quantity`}
+        className="h-8 w-20"
+        value={item.quantity || ""}
+        onChange={(e) => {
+          const quantity = Number(e.target.value)
+          onUpdate({ quantity: Number.isNaN(quantity) ? 0 : quantity })
+        }}
+      />
+      {unitOptions.length > 0 && (
+        <Select
+          items={unitItems}
+          value={resolvedUnit}
+          onValueChange={(value) =>
+            onUpdate({ unit: value as RecipeDisplayUnit })
+          }
+        >
+          <SelectTrigger className="h-8 w-18" aria-label={`${ingredient.name} unit`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {unitItems.map((unitItem) => (
+                <SelectItem key={unitItem.value} value={unitItem.value}>
+                  {unitItem.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      )}
+      {isCountUnit(ingredient.unit) && (
+        <span className="w-18 shrink-0 text-muted-foreground">
+          {ingredient.unit}
+        </span>
+      )}
+      <span className="w-20 shrink-0 text-right font-mono text-muted-foreground">
+        {formatCurrency(computeRecipeItemCost(item, ingredient))}
+      </span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        onClick={onRemove}
+      >
+        <X />
+        <span className="sr-only">Remove</span>
+      </Button>
+    </div>
   )
 }

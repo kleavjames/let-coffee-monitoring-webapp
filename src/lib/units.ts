@@ -5,6 +5,11 @@ const ML_PER_FL_OZ = 29.5735295625
 
 const WEIGHT_UNITS = new Set<IngredientUnit>(["g", "kg"])
 const VOLUME_UNITS = new Set<IngredientUnit>(["ml", "l"])
+const COUNT_UNITS = new Set<IngredientUnit>(["pcs", "pack"])
+
+export function isCountUnit(unit: IngredientUnit): boolean {
+  return COUNT_UNITS.has(unit)
+}
 
 export const RECIPE_DISPLAY_UNITS: RecipeDisplayUnit[] = ["g", "ml", "oz"]
 
@@ -19,7 +24,7 @@ export function isVolumeUnit(unit: IngredientUnit): boolean {
 export function getDefaultRecipeUnit(
   ingredientUnit: IngredientUnit
 ): RecipeDisplayUnit | undefined {
-  if (ingredientUnit === "pcs") return undefined
+  if (isCountUnit(ingredientUnit)) return undefined
   if (isWeightUnit(ingredientUnit)) return "g"
   if (isVolumeUnit(ingredientUnit)) return "ml"
   return "g"
@@ -28,7 +33,7 @@ export function getDefaultRecipeUnit(
 export function getRecipeUnitOptions(
   ingredientUnit: IngredientUnit
 ): RecipeDisplayUnit[] {
-  if (ingredientUnit === "pcs") return []
+  if (isCountUnit(ingredientUnit)) return []
   if (isWeightUnit(ingredientUnit)) return ["g", "oz"]
   if (isVolumeUnit(ingredientUnit)) return ["ml", "oz"]
   return RECIPE_DISPLAY_UNITS
@@ -38,7 +43,7 @@ export function normalizeRecipeItem(
   item: RecipeItem,
   ingredientUnit: IngredientUnit
 ): RecipeItem {
-  if (ingredientUnit === "pcs") {
+  if (isCountUnit(ingredientUnit)) {
     return { ingredientId: item.ingredientId, quantity: item.quantity }
   }
 
@@ -64,7 +69,7 @@ export function toIngredientQuantity(
   displayUnit: RecipeDisplayUnit | undefined,
   ingredientUnit: IngredientUnit
 ): number {
-  if (ingredientUnit === "pcs") return quantity
+  if (isCountUnit(ingredientUnit)) return quantity
 
   const unit = displayUnit ?? getDefaultRecipeUnit(ingredientUnit)
   if (!unit) return quantity
@@ -94,8 +99,8 @@ export function formatRecipeQuantity(
   item: RecipeItem,
   ingredientUnit: IngredientUnit
 ): string {
-  if (ingredientUnit === "pcs") {
-    return `${formatQuantity(item.quantity)} pcs`
+  if (isCountUnit(ingredientUnit)) {
+    return `${formatQuantity(item.quantity)} ${ingredientUnit}`
   }
 
   const unit = item.unit ?? getDefaultRecipeUnit(ingredientUnit) ?? "g"

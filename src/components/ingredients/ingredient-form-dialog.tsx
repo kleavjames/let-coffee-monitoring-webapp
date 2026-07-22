@@ -35,6 +35,7 @@ const unitItems: { label: string; value: IngredientUnit }[] = [
   { label: "Milliliters (ml)", value: "ml" },
   { label: "Liters (l)", value: "l" },
   { label: "Pieces (pcs)", value: "pcs" },
+  { label: "Pack", value: "pack" },
 ]
 
 export type IngredientFormValues = Omit<Ingredient, "id">

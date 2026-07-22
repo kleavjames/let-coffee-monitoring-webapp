@@ -1,4 +1,4 @@
-export type IngredientUnit = "g" | "kg" | "ml" | "l" | "pcs"
+export type IngredientUnit = "g" | "kg" | "ml" | "l" | "pcs" | "pack"
 
 export type Ingredient = {
   id: string

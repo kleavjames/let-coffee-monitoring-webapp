@@ -41,7 +41,8 @@ function normalizeIngredient(raw: LegacyIngredient): Ingredient {
 
   const costPerUnit = raw.costPerUnit ?? 0
   const packageQuantity =
-    raw.packageQuantity ?? (raw.unit === "pcs" ? 100 : 1000)
+    raw.packageQuantity ??
+    (raw.unit === "pcs" ? 100 : raw.unit === "pack" ? 1 : 1000)
 
   return {
     id: raw.id,
