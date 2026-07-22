@@ -27,12 +27,18 @@ import type { Sale } from "@/lib/types"
 
 export type SaleFormValues = Omit<Sale, "id">
 
+type SaleFormState = Omit<SaleFormValues, "unitPrice">
+
 function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  const day = String(now.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
 
-function emptyValues(): SaleFormValues {
-  return { date: todayIso(), productId: "", quantity: 1, unitPrice: 0 }
+function emptyValues(): SaleFormState {
+  return { date: todayIso(), productId: "", quantity: 1 }
 }
 
 export function SaleFormDialog({
@@ -47,43 +53,53 @@ export function SaleFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <SaleForm key={String(open)} onOpenChange={onOpenChange} onSubmit={onSubmit} />
+        <SaleForm
+          key={String(open)}
+          open={open}
+          onOpenChange={onOpenChange}
+          onSubmit={onSubmit}
+        />
       </DialogContent>
     </Dialog>
   )
 }
 
 function SaleForm({
+  open,
   onOpenChange,
   onSubmit,
 }: {
+  open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (values: SaleFormValues) => void
 }) {
   const { items: products } = useProducts()
-  const [values, setValues] = React.useState<SaleFormValues>(emptyValues)
+  const [values, setValues] = React.useState<SaleFormState>(emptyValues)
+
+  React.useEffect(() => {
+    if (open) setValues(emptyValues())
+  }, [open])
 
   const activeProducts = products.filter((p) => p.status === "active")
+  const selectedProduct = products.find((p) => p.id === values.productId)
+  const unitPrice = selectedProduct?.price ?? 0
+  const total = values.quantity * unitPrice
+
   const productItems = [
     { label: "Select product", value: null as string | null },
-    ...activeProducts.map((p) => ({ label: p.name, value: p.id })),
+    ...activeProducts.map((p) => ({
+      label: `${p.name} · ${formatCurrency(p.price)}`,
+      value: p.id,
+    })),
   ]
-
-  const total = values.quantity * values.unitPrice
-
-  function handleProductChange(productId: string | null) {
-    const product = products.find((p) => p.id === productId)
-    setValues((v) => ({
-      ...v,
-      productId: productId ?? "",
-      unitPrice: product ? product.price : v.unitPrice,
-    }))
-  }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (!values.productId || values.quantity <= 0) return
-    onSubmit(values)
+    if (!selectedProduct || values.quantity <= 0) return
+    onSubmit({
+      ...values,
+      unitPrice: selectedProduct.price,
+    })
     onOpenChange(false)
   }
 
@@ -92,7 +108,8 @@ function SaleForm({
       <DialogHeader>
         <DialogTitle>Log a Sale</DialogTitle>
         <DialogDescription>
-          Record a product sale for a specific day.
+          Record a product sale for a specific day. Price comes from the
+          product.
         </DialogDescription>
       </DialogHeader>
       <FieldGroup className="py-4">
@@ -102,7 +119,10 @@ function SaleForm({
             items={productItems}
             value={values.productId || null}
             onValueChange={(value) =>
-              handleProductChange(value as string | null)
+              setValues((v) => ({
+                ...v,
+                productId: (value as string | null) ?? "",
+              }))
             }
           >
             <SelectTrigger id="sale-product" className="w-full">
@@ -122,42 +142,23 @@ function SaleForm({
             </SelectContent>
           </Select>
         </Field>
-        <div className="grid grid-cols-2 gap-4">
-          <Field>
-            <FieldLabel htmlFor="sale-quantity">Quantity</FieldLabel>
-            <Input
-              id="sale-quantity"
-              type="number"
-              min={1}
-              step="1"
-              value={values.quantity}
-              onChange={(e) =>
-                setValues((v) => ({
-                  ...v,
-                  quantity: Number(e.target.value),
-                }))
-              }
-              required
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="sale-unit-price">Unit price</FieldLabel>
-            <Input
-              id="sale-unit-price"
-              type="number"
-              min={0}
-              step="0.01"
-              value={values.unitPrice}
-              onChange={(e) =>
-                setValues((v) => ({
-                  ...v,
-                  unitPrice: Number(e.target.value),
-                }))
-              }
-              required
-            />
-          </Field>
-        </div>
+        <Field>
+          <FieldLabel htmlFor="sale-quantity">Quantity</FieldLabel>
+          <Input
+            id="sale-quantity"
+            type="number"
+            min={1}
+            step="1"
+            value={values.quantity}
+            onChange={(e) =>
+              setValues((v) => ({
+                ...v,
+                quantity: Number(e.target.value),
+              }))
+            }
+            required
+          />
+        </Field>
         <Field>
           <FieldLabel htmlFor="sale-date">Date</FieldLabel>
           <Input
@@ -171,12 +172,18 @@ function SaleForm({
           />
         </Field>
         <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm">
-          <span className="text-muted-foreground">Total</span>
+          <span className="text-muted-foreground">
+            {selectedProduct
+              ? `${formatCurrency(unitPrice)} × ${values.quantity}`
+              : "Total"}
+          </span>
           <span className="font-medium">{formatCurrency(total)}</span>
         </div>
       </FieldGroup>
       <DialogFooter>
-        <Button type="submit">Log sale</Button>
+        <Button type="submit" disabled={!selectedProduct || values.quantity <= 0}>
+          Log sale
+        </Button>
       </DialogFooter>
     </form>
   )
