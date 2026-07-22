@@ -1,4 +1,4 @@
-import type { Ingredient, Product, RecipeItem } from "@/lib/types"
+import type { Ingredient, IngredientUnit, Product, RecipeItem } from "@/lib/types"
 import { toIngredientQuantity } from "@/lib/units"
 
 export function getIngredientCostPerUnit(
@@ -6,6 +6,21 @@ export function getIngredientCostPerUnit(
 ): number {
   if (ingredient.packageQuantity <= 0) return 0
   return ingredient.purchasePrice / ingredient.packageQuantity
+}
+
+export function getIngredientCostDisplay(
+  ingredient: Pick<Ingredient, "purchasePrice" | "packageQuantity" | "unit">
+): { cost: number; unit: IngredientUnit } {
+  const costPerUnit = getIngredientCostPerUnit(ingredient)
+
+  if (ingredient.unit === "kg") {
+    return { cost: costPerUnit / 1000, unit: "g" }
+  }
+  if (ingredient.unit === "l") {
+    return { cost: costPerUnit / 1000, unit: "ml" }
+  }
+
+  return { cost: costPerUnit, unit: ingredient.unit }
 }
 
 export function computeRecipeItemCost(

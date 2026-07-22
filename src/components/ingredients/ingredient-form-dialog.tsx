@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { formatCurrency, getIngredientCostPerUnit } from "@/lib/costing"
+import { formatCurrency, getIngredientCostDisplay } from "@/lib/costing"
 import type { Ingredient, IngredientUnit } from "@/lib/types"
 
 const unitItems: { label: string; value: IngredientUnit }[] = [
@@ -100,10 +100,8 @@ function IngredientForm({
 
   const isEditing = Boolean(ingredient)
 
-  const costPerUnit =
-    values.packageQuantity > 0
-      ? getIngredientCostPerUnit(values)
-      : null
+  const costDisplay =
+    values.packageQuantity > 0 ? getIngredientCostDisplay(values) : null
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -225,11 +223,11 @@ function IngredientForm({
             </div>
           </Field>
         </div>
-        {costPerUnit !== null && (
+        {costDisplay !== null && (
           <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
             <span className="text-muted-foreground">Cost: </span>
             <span className="font-medium">
-              {formatCurrency(costPerUnit)} / {values.unit}
+              {formatCurrency(costDisplay.cost)} / {costDisplay.unit}
             </span>
           </div>
         )}

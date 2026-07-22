@@ -42,7 +42,7 @@ import {
   IngredientFormDialog,
   type IngredientFormValues,
 } from "@/components/ingredients/ingredient-form-dialog"
-import { formatCurrency, getIngredientCostPerUnit } from "@/lib/costing"
+import { formatCurrency, getIngredientCostDisplay } from "@/lib/costing"
 import { useIngredients } from "@/lib/data-provider"
 import type { Ingredient } from "@/lib/types"
 
@@ -119,7 +119,9 @@ export default function IngredientsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map((ingredient) => (
+                items.map((ingredient) => {
+                  const costDisplay = getIngredientCostDisplay(ingredient)
+                  return (
                   <TableRow key={ingredient.id}>
                     <TableCell className="font-medium">
                       {ingredient.name}
@@ -128,10 +130,10 @@ export default function IngredientsPage() {
                       <Badge variant="outline">{ingredient.unit}</Badge>
                     </TableCell>
                     <TableCell className="font-mono">
-                      {formatCurrency(getIngredientCostPerUnit(ingredient))}
+                      {formatCurrency(costDisplay.cost)}
                       <span className="text-muted-foreground">
                         {" "}
-                        / {ingredient.unit}
+                        / {costDisplay.unit}
                       </span>
                     </TableCell>
                     <TableCell className="font-mono">
@@ -170,7 +172,8 @@ export default function IngredientsPage() {
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
-                ))
+                  )
+                })
               )}
             </TableBody>
           </Table>
