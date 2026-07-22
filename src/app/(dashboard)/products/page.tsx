@@ -168,33 +168,33 @@ export default function ProductsPage() {
                       <TableCell>
                         <Popover>
                           <PopoverTrigger className="text-sm text-foreground underline-offset-4 hover:underline">
-                            View ({product.recipe.length})
+                            View ({product.recipe.length - 1})
                           </PopoverTrigger>
-                          <PopoverContent>
+                          <PopoverContent className="w-80">
                             <PopoverTitle>{product.name} recipe</PopoverTitle>
                             {product.recipe.length === 0 ? (
                               <p className="text-muted-foreground">
                                 No ingredients set.
                               </p>
                             ) : (
-                              <div className="flex flex-col gap-1.5">
+                              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-2 text-sm">
                                 {product.recipe.map((item) => {
                                   const ingredient = ingredients.find(
                                     (i) => i.id === item.ingredientId,
                                   );
                                   if (!ingredient) return null;
                                   return (
-                                    <div
-                                      key={item.ingredientId}
-                                      className="flex items-center justify-between gap-2"
-                                    >
-                                      <span>{ingredient.name}</span>
-                                      <span className="font-mono text-muted-foreground">
+                                    <React.Fragment key={item.ingredientId}>
+                                      <span className="leading-snug">
+                                        {ingredient.name}
+                                      </span>
+                                      <span className="font-mono text-right text-muted-foreground tabular-nums whitespace-nowrap">
                                         {formatRecipeQuantity(
                                           item,
                                           ingredient.unit,
-                                        )}{" "}
-                                        ·{" "}
+                                        )}
+                                      </span>
+                                      <span className="font-mono text-right text-muted-foreground tabular-nums whitespace-nowrap">
                                         {formatCurrency(
                                           computeRecipeItemCost(
                                             item,
@@ -202,7 +202,7 @@ export default function ProductsPage() {
                                           ),
                                         )}
                                       </span>
-                                    </div>
+                                    </React.Fragment>
                                   );
                                 })}
                               </div>
