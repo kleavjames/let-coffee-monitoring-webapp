@@ -264,6 +264,43 @@ export function DashboardSkeleton() {
         ))}
       </div>
 
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        {Array.from({ length: 2 }).map((_, index) => (
+          <Card key={`period-${index}`}>
+            <CardHeader>
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-4 w-40" />
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              {Array.from({ length: 3 }).map((__, metricIndex) => (
+                <div
+                  key={`period-metric-${index}-${metricIndex}`}
+                  className="flex items-start justify-between gap-3"
+                >
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-7 w-28" />
+                  </div>
+                  <Skeleton className="h-5 w-14" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+
+        <Card className="h-full">
+          <CardHeader>
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-4 w-40" />
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Skeleton key={`top-seller-${index}`} className="h-4 w-full" />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <Skeleton className="h-5 w-28" />

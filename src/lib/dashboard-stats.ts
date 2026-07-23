@@ -1,5 +1,5 @@
 import { getSaleTotal } from "@/lib/costing"
-import type { Expense, Product, Sale } from "@/lib/types"
+import type { Expense, Product, ProductCategory, Sale } from "@/lib/types"
 
 const PH_TIMEZONE = "Asia/Manila"
 
@@ -22,6 +22,32 @@ export type DashboardRecentSale = {
   quantity: number
   total: number
   date: string
+}
+
+export type DashboardPeriodMetric = {
+  label: string
+  value: string
+  trend: string | null
+  trendUp: boolean
+}
+
+export type DashboardPeriodSummary = {
+  title: string
+  description: string
+  sales: DashboardPeriodMetric
+  expenses: DashboardPeriodMetric
+  net: DashboardPeriodMetric
+}
+
+export type DashboardTopProduct = {
+  productId: string
+  name: string
+  category: string
+  price: number | null
+  quantity: number
+  revenue: number
+  orders: number
+  avgOrderValue: number
 }
 
 function todayIso(): string {
@@ -63,6 +89,86 @@ function getLastWeekRange(today: string): { start: string; end: string } {
   const thisWeekStart = getWeekStart(today)
   const start = addDays(thisWeekStart, -7)
   return { start, end: addDays(start, 6) }
+}
+
+function getThisMonthRange(today: string): { start: string; end: string } {
+  const [year, month] = today.split("-")
+  return { start: `${year}-${month}-01`, end: today }
+}
+
+function getLastMonthRange(today: string): { start: string; end: string } {
+  const thisMonthStart = getThisMonthRange(today).start
+  const lastMonthEnd = addDays(thisMonthStart, -1)
+  const [year, month] = lastMonthEnd.split("-")
+  return { start: `${year}-${month}-01`, end: lastMonthEnd }
+}
+
+function getThisYearRange(today: string): { start: string; end: string } {
+  const [year] = today.split("-")
+  return { start: `${year}-01-01`, end: today }
+}
+
+function getLastYearRange(today: string): { start: string; end: string } {
+  const [year, month, day] = today.split("-")
+  const lastYear = String(Number(year) - 1)
+  return { start: `${lastYear}-01-01`, end: `${lastYear}-${month}-${day}` }
+}
+
+function formatMonthLabel(isoDate: string): string {
+  return toManilaDate(isoDate).toLocaleDateString("en-PH", {
+    timeZone: PH_TIMEZONE,
+    month: "long",
+    year: "numeric",
+  })
+}
+
+function formatYearLabel(isoDate: string): string {
+  return toManilaDate(isoDate).toLocaleDateString("en-PH", {
+    timeZone: PH_TIMEZONE,
+    year: "numeric",
+  })
+}
+
+function buildPeriodMetric(
+  label: string,
+  current: number,
+  previous: number,
+  formatValue: (value: number) => string,
+  invertTrend = false
+): DashboardPeriodMetric {
+  const trend = formatPercentChange(current, previous)
+
+  return {
+    label,
+    value: formatValue(current),
+    trend: trend?.label ?? null,
+    trendUp: trend ? (invertTrend ? !trend.trendUp : trend.trendUp) : true,
+  }
+}
+
+function buildPeriodSummary(
+  title: string,
+  description: string,
+  sales: { current: number; previous: number },
+  expenses: { current: number; previous: number },
+  formatValue: (value: number) => string
+): DashboardPeriodSummary {
+  const netCurrent = sales.current - expenses.current
+  const netPrevious = sales.previous - expenses.previous
+
+  return {
+    title,
+    description,
+    sales: buildPeriodMetric("Sales", sales.current, sales.previous, formatValue),
+    expenses: buildPeriodMetric(
+      "Expenses",
+      expenses.current,
+      expenses.previous,
+      formatValue,
+      true
+    ),
+    net: buildPeriodMetric("Net", netCurrent, netPrevious, formatValue),
+  }
 }
 
 function sumSalesInRange(sales: Sale[], start: string, end: string): number {
@@ -185,6 +291,104 @@ export function buildDashboardSummary(
       description: "Mon–today · vs. last week",
     },
   ]
+}
+
+export function buildPeriodSummaries(
+  sales: Sale[],
+  expenses: Expense[],
+  formatValue: (value: number) => string
+): { monthly: DashboardPeriodSummary; yearly: DashboardPeriodSummary } {
+  const today = todayIso()
+  const thisMonth = getThisMonthRange(today)
+  const lastMonth = getLastMonthRange(today)
+  const thisYear = getThisYearRange(today)
+  const lastYear = getLastYearRange(today)
+  const monthLabel = formatMonthLabel(today)
+  const yearLabel = formatYearLabel(today)
+
+  return {
+    monthly: buildPeriodSummary(
+      "This month",
+      `${monthLabel} · vs. last month`,
+      {
+        current: sumSalesInRange(sales, thisMonth.start, thisMonth.end),
+        previous: sumSalesInRange(sales, lastMonth.start, lastMonth.end),
+      },
+      {
+        current: sumExpensesInRange(expenses, thisMonth.start, thisMonth.end),
+        previous: sumExpensesInRange(expenses, lastMonth.start, lastMonth.end),
+      },
+      formatValue
+    ),
+    yearly: buildPeriodSummary(
+      "This year",
+      `${yearLabel} YTD · vs. same period last year`,
+      {
+        current: sumSalesInRange(sales, thisYear.start, thisYear.end),
+        previous: sumSalesInRange(sales, lastYear.start, lastYear.end),
+      },
+      {
+        current: sumExpensesInRange(expenses, thisYear.start, thisYear.end),
+        previous: sumExpensesInRange(expenses, lastYear.start, lastYear.end),
+      },
+      formatValue
+    ),
+  }
+}
+
+export function buildTopProducts(
+  sales: Sale[],
+  products: Product[],
+  categories: ProductCategory[],
+  limit = 4
+): DashboardTopProduct[] {
+  const today = todayIso()
+  const thisMonth = getThisMonthRange(today)
+  const totals = new Map<
+    string,
+    { quantity: number; revenue: number; orders: number }
+  >()
+
+  for (const sale of sales) {
+    if (sale.date < thisMonth.start || sale.date > thisMonth.end) {
+      continue
+    }
+
+    const current = totals.get(sale.productId) ?? {
+      quantity: 0,
+      revenue: 0,
+      orders: 0,
+    }
+    totals.set(sale.productId, {
+      quantity: current.quantity + sale.quantity,
+      revenue: current.revenue + getSaleTotal(sale),
+      orders: current.orders + 1,
+    })
+  }
+
+  return [...totals.entries()]
+    .map(([productId, stats]) => {
+      const product = products.find((item) => item.id === productId)
+      const category = categories.find((item) => item.id === product?.categoryId)
+
+      return {
+        productId,
+        name: product?.name ?? "Unknown product",
+        category: category?.name ?? "Uncategorized",
+        price: product?.price ?? null,
+        quantity: stats.quantity,
+        revenue: stats.revenue,
+        orders: stats.orders,
+        avgOrderValue: stats.orders > 0 ? stats.revenue / stats.orders : 0,
+      }
+    })
+    .sort((a, b) => {
+      if (b.quantity !== a.quantity) {
+        return b.quantity - a.quantity
+      }
+      return b.revenue - a.revenue
+    })
+    .slice(0, limit)
 }
 
 export function buildSalesChartData(
