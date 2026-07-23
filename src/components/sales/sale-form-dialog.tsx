@@ -80,22 +80,24 @@ function SaleForm({
     if (open) setValues(emptyValues())
   }, [open])
 
-  const activeProducts = products.filter((p) => p.status === "active")
-  const selectedProduct = products.find((p) => p.id === values.productId)
+  const sellableProducts = products.filter(
+    (p) => p.status === "active" && !p.special && p.price != null && p.price > 0
+  )
+  const selectedProduct = sellableProducts.find((p) => p.id === values.productId)
   const unitPrice = selectedProduct?.price ?? 0
   const total = values.quantity * unitPrice
 
   const productItems = [
     { label: "Select product", value: null as string | null },
-    ...activeProducts.map((p) => ({
-      label: `${p.name} · ${formatCurrency(p.price)}`,
+    ...sellableProducts.map((p) => ({
+      label: `${p.name} · ${formatCurrency(p.price!)}`,
       value: p.id,
     })),
   ]
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (!selectedProduct || values.quantity <= 0) return
+    if (!selectedProduct || values.quantity <= 0 || selectedProduct.price == null) return
     onSubmit({
       ...values,
       unitPrice: selectedProduct.price,

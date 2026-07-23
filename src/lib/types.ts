@@ -12,7 +12,8 @@ export type Ingredient = {
 export type RecipeDisplayUnit = "g" | "ml" | "oz"
 
 export type RecipeItem = {
-  ingredientId: string
+  ingredientId?: string
+  productId?: string
   quantity: number
   unit?: RecipeDisplayUnit
 }
@@ -27,9 +28,10 @@ export type ProductStatus = "active" | "inactive"
 export type Product = {
   id: string
   name: string
-  categoryId: string
-  price: number
+  categoryId?: string
+  price?: number
   status: ProductStatus
+  special?: boolean
   recipe: RecipeItem[]
 }
 

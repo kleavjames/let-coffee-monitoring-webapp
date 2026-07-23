@@ -63,6 +63,7 @@ export const seedProducts: Product[] = [
     categoryId: "cat-hot-coffee",
     price: 85,
     status: "active",
+    special: true,
     recipe: [
       { ingredientId: "ing-coffee-beans", quantity: 18, unit: "g" },
       { ingredientId: "ing-cup", quantity: 1 },
@@ -75,7 +76,7 @@ export const seedProducts: Product[] = [
     price: 95,
     status: "active",
     recipe: [
-      { ingredientId: "ing-coffee-beans", quantity: 18, unit: "g" },
+      { productId: "prod-espresso", quantity: 1 },
       { ingredientId: "ing-cup", quantity: 1 },
     ],
   },

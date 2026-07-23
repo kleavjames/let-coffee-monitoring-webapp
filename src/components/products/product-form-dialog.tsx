@@ -32,12 +32,20 @@ import {
   computeMarginPercent,
   computeProductCost,
   computeProductMargin,
+  computeProductRecipeItemCost,
   computeProjectedPrices,
   computeRecipeItemCost,
   formatCurrency,
+  formatProductRecipeItemCostBreakdown,
   formatRecipeItemCostBreakdown,
 } from "@/lib/costing"
-import { useCategories, useIngredients } from "@/lib/data-provider"
+import { useCategories, useIngredients, useProducts } from "@/lib/data-provider"
+import {
+  getRecipeItemKey,
+  isProductRecipeItem,
+  parseRecipePickerValue,
+  type RecipePickerValue,
+} from "@/lib/recipe"
 import type {
   Ingredient,
   Product,
@@ -56,10 +64,21 @@ export type ProductFormValues = Omit<Product, "id">
 
 const emptyValues: ProductFormValues = {
   name: "",
-  categoryId: "",
-  price: 0,
   status: "active",
+  special: false,
   recipe: [],
+}
+
+function hasSellablePrice(price: number | undefined): boolean {
+  return price != null && price > 0
+}
+
+function normalizeFormValues(values: ProductFormValues): ProductFormValues {
+  return {
+    ...values,
+    categoryId: values.categoryId || undefined,
+    price: hasSellablePrice(values.price) ? values.price : undefined,
+  }
 }
 
 const statusItems: { label: string; value: ProductStatus }[] = [
@@ -109,6 +128,7 @@ function ProductForm({
 }) {
   const { items: ingredients } = useIngredients()
   const { items: categories } = useCategories()
+  const { items: allProducts } = useProducts()
   const [values, setValues] = React.useState<ProductFormValues>(() =>
     product
       ? {
@@ -116,21 +136,26 @@ function ProductForm({
           categoryId: product.categoryId,
           price: product.price,
           status: product.status,
+          special: product.special ?? false,
           recipe: product.recipe,
         }
       : emptyValues
   )
-  const [pickerIngredientId, setPickerIngredientId] = React.useState<
-    string | null
-  >(null)
+  const [pickerValue, setPickerValue] = React.useState<RecipePickerValue | null>(
+    null
+  )
   const [pickerQuantity, setPickerQuantity] = React.useState(0)
   const [pickerUnit, setPickerUnit] = React.useState<RecipeDisplayUnit>("g")
 
   const isEditing = Boolean(product)
 
-  const pickerIngredient = ingredients.find(
-    (ingredient) => ingredient.id === pickerIngredientId
-  )
+  const pickerTarget = parseRecipePickerValue(pickerValue)
+  const pickerIngredient = pickerTarget?.ingredientId
+    ? ingredients.find((ingredient) => ingredient.id === pickerTarget.ingredientId)
+    : undefined
+  const pickerSpecialProduct = pickerTarget?.productId
+    ? allProducts.find((item) => item.id === pickerTarget.productId)
+    : undefined
   const pickerUnitOptions = pickerIngredient
     ? getRecipeUnitOptions(pickerIngredient.unit)
     : (["g", "ml", "oz"] as RecipeDisplayUnit[])
@@ -145,11 +170,22 @@ function ProductForm({
       !values.recipe.some((item) => item.ingredientId === ingredient.id)
   )
 
-  const ingredientPickerItems = [
-    { label: "Select ingredient", value: null as string | null },
+  const availableSpecialProducts = allProducts.filter(
+    (item) =>
+      item.special &&
+      item.id !== product?.id &&
+      !values.recipe.some((recipeItem) => recipeItem.productId === item.id)
+  )
+
+  const recipePickerItems = [
+    { label: "Select ingredient or special product", value: null as RecipePickerValue | null },
     ...availableIngredients.map((ingredient) => ({
       label: `${ingredient.name} (${ingredient.unit})`,
-      value: ingredient.id,
+      value: `ing:${ingredient.id}` as RecipePickerValue,
+    })),
+    ...availableSpecialProducts.map((item) => ({
+      label: `${item.name} (special)`,
+      value: `prod:${item.id}` as RecipePickerValue,
     })),
   ]
 
@@ -161,58 +197,99 @@ function ProductForm({
     })),
   ]
 
-  const totalCost = computeProductCost(values, ingredients)
-  const margin = computeProductMargin(values, ingredients)
-  const marginPercent = computeMarginPercent(values, ingredients)
+  const productsForCosting = React.useMemo(() => {
+    if (!product) return allProducts
+    return allProducts.map((item) =>
+      item.id === product.id ? { ...item, ...values, id: product.id } : item
+    )
+  }, [allProducts, product, values])
+
+  const costingProduct = product
+    ? { ...values, id: product.id }
+    : { ...values, id: "draft-product" }
+
+  const totalCost = computeProductCost(
+    costingProduct,
+    ingredients,
+    productsForCosting
+  )
+  const margin = computeProductMargin(
+    { ...costingProduct, price: values.price },
+    ingredients,
+    productsForCosting
+  )
+  const marginPercent = computeMarginPercent(
+    { ...costingProduct, price: values.price },
+    ingredients,
+    productsForCosting
+  )
   const projectedPrices = computeProjectedPrices(totalCost)
+  const showPricingDetails = !values.special || hasSellablePrice(values.price)
 
   function handleAddRecipeItem() {
-    if (!pickerIngredientId || pickerQuantity <= 0 || !pickerIngredient) return
-    const newItem: RecipeItem = {
-      ingredientId: pickerIngredientId,
-      quantity: pickerQuantity,
-      ...(!isCountUnit(pickerIngredient.unit) && { unit: pickerUnit }),
+    if (!pickerTarget || pickerQuantity <= 0) return
+
+    if (pickerTarget.productId) {
+      const newItem: RecipeItem = {
+        productId: pickerTarget.productId,
+        quantity: pickerQuantity,
+      }
+      setValues((v) => ({ ...v, recipe: [...v.recipe, newItem] }))
+    } else if (pickerTarget.ingredientId && pickerIngredient) {
+      const newItem: RecipeItem = {
+        ingredientId: pickerTarget.ingredientId,
+        quantity: pickerQuantity,
+        ...(!isCountUnit(pickerIngredient.unit) && { unit: pickerUnit }),
+      }
+      setValues((v) => ({ ...v, recipe: [...v.recipe, newItem] }))
+    } else {
+      return
     }
-    setValues((v) => ({ ...v, recipe: [...v.recipe, newItem] }))
-    setPickerIngredientId(null)
+
+    setPickerValue(null)
     setPickerQuantity(0)
     setPickerUnit("g")
   }
 
-  function handlePickerIngredientChange(ingredientId: string | null) {
-    setPickerIngredientId(ingredientId)
-    if (!ingredientId) return
+  function handlePickerChange(value: RecipePickerValue | null) {
+    setPickerValue(value)
+    if (!value) return
 
-    const ingredient = ingredients.find((item) => item.id === ingredientId)
+    const target = parseRecipePickerValue(value)
+    if (!target?.ingredientId) return
+
+    const ingredient = ingredients.find((item) => item.id === target.ingredientId)
     if (!ingredient) return
 
     const defaultUnit = getDefaultRecipeUnit(ingredient.unit)
     if (defaultUnit) setPickerUnit(defaultUnit)
   }
 
-  function handleRemoveRecipeItem(ingredientId: string) {
+  function handleRemoveRecipeItem(itemKey: string) {
     setValues((v) => ({
       ...v,
-      recipe: v.recipe.filter((item) => item.ingredientId !== ingredientId),
+      recipe: v.recipe.filter((item) => getRecipeItemKey(item) !== itemKey),
     }))
   }
 
   function handleUpdateRecipeItem(
-    ingredientId: string,
+    itemKey: string,
     updates: Partial<Pick<RecipeItem, "quantity" | "unit">>
   ) {
     setValues((v) => ({
       ...v,
       recipe: v.recipe.map((item) =>
-        item.ingredientId === ingredientId ? { ...item, ...updates } : item
+        getRecipeItemKey(item) === itemKey ? { ...item, ...updates } : item
       ),
     }))
   }
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (!values.name.trim() || !values.categoryId) return
-    onSubmit(values)
+    if (!values.name.trim()) return
+    if (!values.special && !values.categoryId) return
+    if (!values.special && !hasSellablePrice(values.price)) return
+    onSubmit(normalizeFormValues(values))
     onOpenChange(false)
   }
 
@@ -241,16 +318,41 @@ function ProductForm({
               required
             />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <Field>
+            <div className="flex items-start gap-3">
+              <input
+                id="product-special"
+                type="checkbox"
+                checked={values.special ?? false}
+                onChange={(e) =>
+                  setValues((v) => ({ ...v, special: e.target.checked }))
+                }
+                className="mt-0.5 size-4 rounded border border-input accent-primary"
+              />
+              <div className="space-y-1">
+                <FieldLabel htmlFor="product-special" className="font-normal">
+                  Special
+                </FieldLabel>
+                <p className="text-xs text-muted-foreground">
+                  Special products can be added to other products&apos; recipes.
+                  Their recipe cost is included automatically. Category and price
+                  are optional.
+                </p>
+              </div>
+            </div>
+          </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field>
-              <FieldLabel htmlFor="product-category">Category</FieldLabel>
+              <FieldLabel htmlFor="product-category">
+                Category{values.special ? " (optional)" : ""}
+              </FieldLabel>
               <Select
                 items={categoryItems}
                 value={values.categoryId || null}
                 onValueChange={(value) =>
                   setValues((v) => ({
                     ...v,
-                    categoryId: (value as string | null) ?? "",
+                    categoryId: (value as string | null) ?? undefined,
                   }))
                 }
               >
@@ -272,76 +374,99 @@ function ProductForm({
               </Select>
             </Field>
             <Field>
-              <FieldLabel htmlFor="product-price">Price</FieldLabel>
+              <FieldLabel htmlFor="product-price">
+                Price{values.special ? " (optional)" : ""}
+              </FieldLabel>
               <Input
                 id="product-price"
                 type="number"
                 min={0}
                 step="0.01"
-                value={values.price}
-                onChange={(e) =>
+                value={values.price ?? ""}
+                onChange={(e) => {
+                  const next = e.target.value
                   setValues((v) => ({
                     ...v,
-                    price: Number(e.target.value),
+                    price: next === "" ? undefined : Number(next),
                   }))
-                }
-                required
+                }}
+                required={!values.special}
               />
             </Field>
+            <Field>
+              <FieldLabel htmlFor="product-status">Status</FieldLabel>
+              <Select
+                items={statusItems}
+                value={values.status}
+                onValueChange={(value) =>
+                  setValues((v) => ({
+                    ...v,
+                    status: value as ProductStatus,
+                  }))
+                }
+              >
+                <SelectTrigger id="product-status" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {statusItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
           </div>
-          <Field>
-            <FieldLabel htmlFor="product-status">Status</FieldLabel>
-            <Select
-              items={statusItems}
-              value={values.status}
-              onValueChange={(value) =>
-                setValues((v) => ({
-                  ...v,
-                  status: value as ProductStatus,
-                }))
-              }
-            >
-              <SelectTrigger id="product-status" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {statusItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </Field>
 
           <FieldSeparator>Recipe</FieldSeparator>
 
           <Field>
-            <FieldLabel>Ingredients</FieldLabel>
+            <FieldLabel>Recipe items</FieldLabel>
             {values.recipe.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No ingredients added yet.
+                No recipe items added yet.
               </p>
             ) : (
               <div className="flex flex-col gap-2">
                 {values.recipe.map((item) => {
+                  const itemKey = getRecipeItemKey(item)
+
+                  if (isProductRecipeItem(item)) {
+                    const specialProduct = productsForCosting.find(
+                      (p) => p.id === item.productId
+                    )
+                    if (!specialProduct) return null
+                    return (
+                      <SpecialRecipeItemRow
+                        key={itemKey}
+                        item={item}
+                        specialProduct={specialProduct}
+                        ingredients={ingredients}
+                        products={productsForCosting}
+                        onUpdate={(updates) =>
+                          handleUpdateRecipeItem(itemKey, updates)
+                        }
+                        onRemove={() => handleRemoveRecipeItem(itemKey)}
+                      />
+                    )
+                  }
+
                   const ingredient = ingredients.find(
                     (i) => i.id === item.ingredientId
                   )
                   if (!ingredient) return null
                   return (
                     <RecipeItemRow
-                      key={item.ingredientId}
+                      key={itemKey}
                       item={item}
                       ingredient={ingredient}
                       onUpdate={(updates) =>
-                        handleUpdateRecipeItem(item.ingredientId, updates)
+                        handleUpdateRecipeItem(itemKey, updates)
                       }
-                      onRemove={() =>
-                        handleRemoveRecipeItem(item.ingredientId)
-                      }
+                      onRemove={() => handleRemoveRecipeItem(itemKey)}
                     />
                   )
                 })}
@@ -351,18 +476,18 @@ function ProductForm({
             <div className="mt-2 flex items-end gap-2">
               <div className="flex-1">
                 <Select
-                  items={ingredientPickerItems}
-                  value={pickerIngredientId}
+                  items={recipePickerItems}
+                  value={pickerValue}
                   onValueChange={(value) =>
-                    handlePickerIngredientChange(value as string | null)
+                    handlePickerChange(value as RecipePickerValue | null)
                   }
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select ingredient" />
+                    <SelectValue placeholder="Select ingredient or special product" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {ingredientPickerItems.map((item) => (
+                      {recipePickerItems.map((item) => (
                         <SelectItem
                           key={item.value ?? "placeholder"}
                           value={item.value}
@@ -378,12 +503,12 @@ function ProductForm({
                 type="number"
                 min={0}
                 step="0.01"
-                placeholder="Qty"
+                placeholder={pickerSpecialProduct ? "Servings" : "Qty"}
                 className="w-20"
                 value={pickerQuantity || ""}
                 onChange={(e) => setPickerQuantity(Number(e.target.value))}
               />
-              {pickerUnitOptions.length > 0 && (
+              {pickerIngredient && pickerUnitOptions.length > 0 && (
                 <Select
                   items={pickerUnitItems}
                   value={pickerUnit}
@@ -405,15 +530,24 @@ function ProductForm({
                   </SelectContent>
                 </Select>
               )}
+              {pickerSpecialProduct && (
+                <span className="w-18 shrink-0 text-sm text-muted-foreground">
+                  serving{pickerQuantity === 1 ? "" : "s"}
+                </span>
+              )}
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                disabled={!pickerIngredientId || pickerQuantity <= 0}
+                disabled={
+                  !pickerValue ||
+                  pickerQuantity <= 0 ||
+                  (!pickerIngredient && !pickerSpecialProduct)
+                }
                 onClick={handleAddRecipeItem}
               >
                 <Plus />
-                <span className="sr-only">Add ingredient</span>
+                <span className="sr-only">Add recipe item</span>
               </Button>
             </div>
           </Field>
@@ -426,6 +560,7 @@ function ProductForm({
             margin={margin}
             marginPercent={marginPercent}
             projectedPrices={projectedPrices}
+            showPricingDetails={showPricingDetails}
             onApplyPrice={(price) =>
               setValues((v) => ({ ...v, price }))
             }
@@ -446,13 +581,15 @@ function ProductPricingSummary({
   margin,
   marginPercent,
   projectedPrices,
+  showPricingDetails,
   onApplyPrice,
 }: {
   totalCost: number
-  price: number
+  price?: number
   margin: number
   marginPercent: number
   projectedPrices: ReturnType<typeof computeProjectedPrices>
+  showPricingDetails: boolean
   onApplyPrice: (price: number) => void
 }) {
   return (
@@ -470,29 +607,37 @@ function ProductPricingSummary({
           <dd className="text-right font-mono font-medium">
             {formatCurrency(totalCost)}
           </dd>
-          <dt className="text-muted-foreground">Your price</dt>
-          <dd className="text-right font-mono font-medium">
-            {formatCurrency(price)}
-          </dd>
-          <dt className="text-muted-foreground">Profit</dt>
-          <dd
-            className={cn(
-              "text-right font-mono font-medium",
-              margin < 0 && "text-destructive"
-            )}
-          >
-            {formatCurrency(margin)}
-          </dd>
-          <dt className="text-muted-foreground">Margin</dt>
-          <dd className="flex justify-end">
-            <Badge variant={marginPercent >= 0 ? "secondary" : "destructive"}>
-              {marginPercent.toFixed(0)}%
-            </Badge>
-          </dd>
+          {showPricingDetails ? (
+            <>
+              <dt className="text-muted-foreground">Your price</dt>
+              <dd className="text-right font-mono font-medium">
+                {formatCurrency(price ?? 0)}
+              </dd>
+              <dt className="text-muted-foreground">Profit</dt>
+              <dd
+                className={cn(
+                  "text-right font-mono font-medium",
+                  margin < 0 && "text-destructive"
+                )}
+              >
+                {formatCurrency(margin)}
+              </dd>
+              <dt className="text-muted-foreground">Margin</dt>
+              <dd className="flex justify-end">
+                <Badge variant={marginPercent >= 0 ? "secondary" : "destructive"}>
+                  {marginPercent.toFixed(0)}%
+                </Badge>
+              </dd>
+            </>
+          ) : (
+            <dd className="col-span-2 text-xs text-muted-foreground">
+              Add a price to see profit, margin, and suggested prices.
+            </dd>
+          )}
         </dl>
       </div>
 
-      {projectedPrices.length > 0 && (
+      {showPricingDetails && projectedPrices.length > 0 && (
         <div className="flex flex-col gap-2">
           <h4 className="text-sm font-medium">Suggested prices</h4>
           {projectedPrices.map((projection) => {
@@ -536,6 +681,75 @@ function ProductPricingSummary({
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+function SpecialRecipeItemRow({
+  item,
+  specialProduct,
+  ingredients,
+  products,
+  onUpdate,
+  onRemove,
+}: {
+  item: RecipeItem
+  specialProduct: Product
+  ingredients: Ingredient[]
+  products: Product[]
+  onUpdate: (updates: Partial<Pick<RecipeItem, "quantity">>) => void
+  onRemove: () => void
+}) {
+  const costBreakdown = formatProductRecipeItemCostBreakdown(
+    item,
+    specialProduct,
+    ingredients,
+    products
+  )
+  const lineCost = computeProductRecipeItemCost(
+    item,
+    specialProduct,
+    ingredients,
+    products
+  )
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 text-sm">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="truncate font-medium">{specialProduct.name}</p>
+          <Badge variant="outline" className="shrink-0 text-[10px]">
+            Special
+          </Badge>
+        </div>
+        {costBreakdown && (
+          <p className="truncate text-[11px] text-muted-foreground">
+            {costBreakdown}
+          </p>
+        )}
+      </div>
+      <Input
+        type="number"
+        min={0}
+        step="0.01"
+        aria-label={`${specialProduct.name} servings`}
+        className="h-8 w-20"
+        value={item.quantity || ""}
+        onChange={(e) => {
+          const quantity = Number(e.target.value)
+          onUpdate({ quantity: Number.isNaN(quantity) ? 0 : quantity })
+        }}
+      />
+      <span className="w-18 shrink-0 text-muted-foreground">
+        serving{item.quantity === 1 ? "" : "s"}
+      </span>
+      <span className="w-20 shrink-0 text-right font-mono text-muted-foreground">
+        {formatCurrency(lineCost)}
+      </span>
+      <Button type="button" variant="ghost" size="icon-xs" onClick={onRemove}>
+        <X />
+        <span className="sr-only">Remove</span>
+      </Button>
     </div>
   )
 }

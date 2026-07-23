@@ -1,9 +1,12 @@
 import type { Ingredient, IngredientUnit, Product, RecipeItem } from "@/lib/types"
+import { isProductRecipeItem } from "@/lib/recipe"
 import {
   getResolvedRecipeUnit,
   isCountUnit,
   toBaseRecipeQuantity,
 } from "@/lib/units"
+
+type CostableProduct = Pick<Product, "id" | "recipe">
 
 export function getIngredientCostPerUnit(
   ingredient: Pick<Ingredient, "purchasePrice" | "packageQuantity">
@@ -31,6 +34,8 @@ export function computeRecipeItemCost(
   item: RecipeItem,
   ingredient: Ingredient
 ): number {
+  if (isProductRecipeItem(item)) return 0
+
   const resolvedUnit = getResolvedRecipeUnit(item, ingredient.unit)
   const { cost } = getIngredientCostDisplay(ingredient)
   const { amount } = toBaseRecipeQuantity(
@@ -41,10 +46,41 @@ export function computeRecipeItemCost(
   return cost * amount
 }
 
+export function computeProductRecipeItemCost(
+  item: RecipeItem,
+  specialProduct: CostableProduct,
+  ingredients: Ingredient[],
+  products: CostableProduct[]
+): number {
+  const unitCost = computeProductCost(
+    specialProduct,
+    ingredients,
+    products
+  )
+  return unitCost * item.quantity
+}
+
+export function formatProductRecipeItemCostBreakdown(
+  item: RecipeItem,
+  specialProduct: CostableProduct,
+  ingredients: Ingredient[],
+  products: CostableProduct[]
+): string {
+  const unitCost = computeProductCost(
+    specialProduct,
+    ingredients,
+    products
+  )
+  const label = item.quantity === 1 ? "serving" : "servings"
+  return `${item.quantity} ${label} × ${formatCurrency(unitCost)} recipe cost`
+}
+
 export function formatRecipeItemCostBreakdown(
   item: RecipeItem,
   ingredient: Ingredient
 ): string | null {
+  if (isProductRecipeItem(item)) return null
+
   if (isCountUnit(ingredient.unit)) {
     const cost = getIngredientCostPerUnit(ingredient)
     return `${item.quantity} ${ingredient.unit} × ${formatCurrency(cost)}`
@@ -75,10 +111,29 @@ export function formatRecipeItemCostBreakdown(
 }
 
 export function computeProductCost(
-  product: Pick<Product, "recipe">,
-  ingredients: Ingredient[]
+  product: CostableProduct,
+  ingredients: Ingredient[],
+  products: CostableProduct[] = [],
+  visited: Set<string> = new Set()
 ): number {
+  if (product.id && visited.has(product.id)) return 0
+  const nextVisited = product.id
+    ? new Set([...visited, product.id])
+    : visited
+
   return product.recipe.reduce((total, item) => {
+    if (isProductRecipeItem(item)) {
+      const specialProduct = products.find((p) => p.id === item.productId)
+      if (!specialProduct) return total
+      const unitCost = computeProductCost(
+        specialProduct,
+        ingredients,
+        products,
+        nextVisited
+      )
+      return total + unitCost * item.quantity
+    }
+
     const ingredient = ingredients.find((i) => i.id === item.ingredientId)
     if (!ingredient) return total
     return total + computeRecipeItemCost(item, ingredient)
@@ -86,18 +141,21 @@ export function computeProductCost(
 }
 
 export function computeProductMargin(
-  product: Pick<Product, "recipe" | "price">,
-  ingredients: Ingredient[]
+  product: Pick<Product, "id" | "recipe" | "price">,
+  ingredients: Ingredient[],
+  products: CostableProduct[] = []
 ): number {
-  return product.price - computeProductCost(product, ingredients)
+  return (product.price ?? 0) - computeProductCost(product, ingredients, products)
 }
 
 export function computeMarginPercent(
-  product: Pick<Product, "recipe" | "price">,
-  ingredients: Ingredient[]
+  product: Pick<Product, "id" | "recipe" | "price">,
+  ingredients: Ingredient[],
+  products: CostableProduct[] = []
 ): number {
-  if (product.price <= 0) return 0
-  return (computeProductMargin(product, ingredients) / product.price) * 100
+  const price = product.price ?? 0
+  if (price <= 0) return 0
+  return (computeProductMargin(product, ingredients, products) / price) * 100
 }
 
 export type ProjectedPrice = {

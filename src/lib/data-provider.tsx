@@ -74,7 +74,7 @@ function migrateCategoriesAndProducts(
   const nextCategories = [...categories]
   const nameToId = new Map(nextCategories.map((category) => [category.name, category.id]))
 
-  const migratedProducts = products.map((product) => {
+    const migratedProducts = products.map((product) => {
     if (product.categoryId) {
       const { category: _legacyCategory, ...rest } = product
       return rest as Product
@@ -82,6 +82,10 @@ function migrateCategoriesAndProducts(
 
     const legacyName = product.category?.trim()
     if (!legacyName) {
+      if (product.special) {
+        const { category: _legacyCategory, ...rest } = product
+        return rest as Product
+      }
       return {
         ...product,
         categoryId: nextCategories[0]?.id ?? "",
@@ -110,8 +114,12 @@ function normalizeProducts(
 
   return products.map((product) => ({
     ...product,
+    special: product.special ?? false,
     recipe: product.recipe.map((item) => {
-      const ingredient = ingredientById.get(item.ingredientId)
+      if (item.productId) {
+        return { productId: item.productId, quantity: item.quantity }
+      }
+      const ingredient = ingredientById.get(item.ingredientId ?? "")
       if (!ingredient) return item
       return normalizeRecipeItem(item, ingredient.unit)
     }),

@@ -43,6 +43,10 @@ export function normalizeRecipeItem(
   item: RecipeItem,
   ingredientUnit: IngredientUnit
 ): RecipeItem {
+  if (item.productId) {
+    return { productId: item.productId, quantity: item.quantity }
+  }
+
   if (isCountUnit(ingredientUnit)) {
     return { ingredientId: item.ingredientId, quantity: item.quantity }
   }
