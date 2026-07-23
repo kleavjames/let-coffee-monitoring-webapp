@@ -181,13 +181,14 @@ function SaleForm({
                 ) : null}
               </SelectValue>
             </SelectTrigger>
-            <SelectContent className="max-h-72">
+            <SelectContent searchable searchPlaceholder="Search products..." className="max-h-72">
               <SelectGroup className="p-1.5">
                 {productItems.map((item) => (
                   <SelectItem
                     key={item.value}
                     value={item.value}
                     className="py-2.5 pl-2.5 pr-8"
+                    searchValue={`${item.name} ${item.categoryName} ${formatCurrency(item.price)}`}
                   >
                     <SaleProductOption
                       name={item.name}

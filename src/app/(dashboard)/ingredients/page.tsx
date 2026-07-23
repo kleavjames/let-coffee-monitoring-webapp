@@ -157,7 +157,7 @@ export default function IngredientsPage() {
               <SelectTrigger className="w-full sm:w-52">
                 <SelectValue placeholder="All units" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent searchable searchPlaceholder="Search units...">
                 <SelectGroup>
                   {unitFilterItems.map((item) => (
                     <SelectItem key={item.value} value={item.value}>

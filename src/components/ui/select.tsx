@@ -3,10 +3,48 @@
 import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
+import { ChevronDownIcon, CheckIcon, ChevronUpIcon, SearchIcon } from "lucide-react"
 
-const Select = SelectPrimitive.Root
+type SelectFilterContextValue = {
+  query: string
+  setQuery: (query: string) => void
+}
+
+const SelectFilterContext = React.createContext<SelectFilterContextValue | null>(
+  null
+)
+
+function useSelectFilter() {
+  return React.useContext(SelectFilterContext)
+}
+
+function Select<Value = string | null>({
+  onOpenChange,
+  ...props
+}: SelectPrimitive.Root.Props<Value>) {
+  const [query, setQuery] = React.useState("")
+
+  const handleOpenChange = React.useCallback(
+    (
+      open: boolean,
+      eventDetails: SelectPrimitive.Root.ChangeEventDetails
+    ) => {
+      if (!open) {
+        setQuery("")
+      }
+      onOpenChange?.(open, eventDetails)
+    },
+    [onOpenChange]
+  )
+
+  return (
+    <SelectFilterContext.Provider value={{ query, setQuery }}>
+      <SelectPrimitive.Root onOpenChange={handleOpenChange} {...props} />
+    </SelectFilterContext.Provider>
+  )
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -56,9 +94,82 @@ function SelectTrigger({
   )
 }
 
+function SelectSearch({
+  placeholder = "Search...",
+  className,
+}: {
+  placeholder?: string
+  className?: string
+}) {
+  const filter = useSelectFilter()
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  React.useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [])
+
+  if (!filter) {
+    return null
+  }
+
+  return (
+    <div
+      className={cn(
+        "sticky top-0 z-10 border-b border-border bg-popover p-2",
+        className
+      )}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <div className="relative">
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          value={filter.query}
+          onChange={(event) => filter.setQuery(event.target.value)}
+          onKeyDown={(event) => event.stopPropagation()}
+          placeholder={placeholder}
+          className="pl-8"
+          aria-label={placeholder}
+        />
+      </div>
+    </div>
+  )
+}
+
+function SelectEmpty({
+  className,
+  children = "No results found.",
+}: {
+  className?: string
+  children?: React.ReactNode
+}) {
+  const filter = useSelectFilter()
+
+  if (!filter?.query.trim()) {
+    return null
+  }
+
+  return (
+    <div
+      className={cn(
+        "px-2 py-6 text-center text-sm text-muted-foreground empty:hidden",
+        className
+      )}
+      data-slot="select-empty"
+    >
+      {children}
+    </div>
+  )
+}
+
 function SelectContent({
   className,
   children,
+  searchable = false,
+  searchPlaceholder,
   side = "bottom",
   sideOffset = 4,
   align = "center",
@@ -69,7 +180,47 @@ function SelectContent({
   Pick<
     SelectPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
-  >) {
+  > & {
+    searchable?: boolean
+    searchPlaceholder?: string
+  }) {
+  const filter = useSelectFilter()
+  const searchQuery = filter?.query.trim().toLowerCase() ?? ""
+
+  function hasVisibleItems() {
+    if (!searchable || !searchQuery) {
+      return true
+    }
+
+    return React.Children.toArray(children).some((child) => {
+      if (!React.isValidElement(child)) {
+        return false
+      }
+
+      if (child.type === SelectGroup) {
+        return React.Children.toArray(
+          (child.props as { children?: React.ReactNode }).children
+        ).some((groupChild) => {
+          if (!React.isValidElement(groupChild) || groupChild.type !== SelectItem) {
+            return false
+          }
+
+          const itemProps = groupChild.props as SelectItemProps
+          const searchText = getSelectItemSearchText(itemProps)
+          return searchText.includes(searchQuery)
+        })
+      }
+
+      if (child.type === SelectItem) {
+        const itemProps = child.props as SelectItemProps
+        const searchText = getSelectItemSearchText(itemProps)
+        return searchText.includes(searchQuery)
+      }
+
+      return false
+    })
+  }
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
@@ -83,11 +234,20 @@ function SelectContent({
         <SelectPrimitive.Popup
           data-slot="select-content"
           data-align-trigger={alignItemWithTrigger}
-          className={cn("relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
+          className={cn(
+            "relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+            className
+          )}
           {...props}
         >
           <SelectScrollUpButton />
+          {searchable ? (
+            <SelectSearch placeholder={searchPlaceholder} />
+          ) : null}
           <SelectPrimitive.List>{children}</SelectPrimitive.List>
+          {searchable && searchQuery && !hasVisibleItems() ? (
+            <SelectEmpty />
+          ) : null}
           <SelectScrollDownButton />
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>
@@ -108,11 +268,36 @@ function SelectLabel({
   )
 }
 
+type SelectItemProps = SelectPrimitive.Item.Props & {
+  searchValue?: string
+}
+
+function getSelectItemSearchText(props: SelectItemProps) {
+  if (props.searchValue) {
+    return props.searchValue.toLowerCase()
+  }
+
+  if (typeof props.children === "string") {
+    return props.children.toLowerCase()
+  }
+
+  return ""
+}
+
 function SelectItem({
   className,
   children,
+  searchValue,
   ...props
-}: SelectPrimitive.Item.Props) {
+}: SelectItemProps) {
+  const filter = useSelectFilter()
+  const query = filter?.query.trim().toLowerCase() ?? ""
+  const itemSearchText = getSelectItemSearchText({ children, searchValue, ...props })
+
+  if (query && itemSearchText && !itemSearchText.includes(query)) {
+    return null
+  }
+
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -162,8 +347,7 @@ function SelectScrollUpButton({
       )}
       {...props}
     >
-      <ChevronUpIcon
-      />
+      <ChevronUpIcon />
     </SelectPrimitive.ScrollUpArrow>
   )
 }
@@ -181,8 +365,7 @@ function SelectScrollDownButton({
       )}
       {...props}
     >
-      <ChevronDownIcon
-      />
+      <ChevronDownIcon />
     </SelectPrimitive.ScrollDownArrow>
   )
 }
@@ -190,11 +373,13 @@ function SelectScrollDownButton({
 export {
   Select,
   SelectContent,
+  SelectEmpty,
   SelectGroup,
   SelectItem,
   SelectLabel,
   SelectScrollDownButton,
   SelectScrollUpButton,
+  SelectSearch,
   SelectSeparator,
   SelectTrigger,
   SelectValue,

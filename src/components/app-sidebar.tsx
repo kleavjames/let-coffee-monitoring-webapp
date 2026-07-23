@@ -1,9 +1,15 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Coffee, FolderOpen, LayoutDashboard, ReceiptText, Wheat } from "lucide-react"
+import * as React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Coffee,
+  FolderOpen,
+  LayoutDashboard,
+  ReceiptText,
+  Wheat,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -15,18 +21,18 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Products", url: "/products", icon: Coffee },
-  { title: "Categories", url: "/categories", icon: FolderOpen },
   { title: "Sales", url: "/sales", icon: ReceiptText },
+  { title: "Products", url: "/products", icon: Coffee },
   { title: "Ingredients", url: "/ingredients", icon: Wheat },
-]
+  { title: "Categories", url: "/categories", icon: FolderOpen },
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const pathname = usePathname()
+  const pathname = usePathname();
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -53,7 +59,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 const isActive =
                   item.url === "/"
                     ? pathname === "/"
-                    : pathname.startsWith(item.url)
+                    : pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
@@ -65,7 +71,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <span>{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                )
+                );
               })}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -86,5 +92,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

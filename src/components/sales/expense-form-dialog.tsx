@@ -158,7 +158,7 @@ function ExpenseForm({
               <SelectTrigger id="expense-category" className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent searchable searchPlaceholder="Search categories...">
                 <SelectGroup>
                   {categoryItems.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
@@ -198,7 +198,7 @@ function ExpenseForm({
                 <SelectTrigger id="expense-ingredient" className="w-full">
                   <SelectValue placeholder="Select ingredient (optional)" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent searchable searchPlaceholder="Search ingredients...">
                   <SelectGroup>
                     {ingredientItems.map((item) => (
                       <SelectItem
