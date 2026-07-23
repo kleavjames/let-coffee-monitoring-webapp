@@ -22,8 +22,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { formatCurrency } from "@/lib/costing"
-import { useProducts } from "@/lib/data-provider"
-import type { Sale } from "@/lib/types"
+import { useCategories, useProducts } from "@/lib/data-provider"
+import type { Product, Sale } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
 export type SaleFormValues = Omit<Sale, "id">
 
@@ -41,6 +42,52 @@ function emptyValues(): SaleFormState {
   return { date: todayIso(), productId: "", quantity: 1 }
 }
 
+function getCategoryName(
+  product: Product,
+  categories: { id: string; name: string }[]
+) {
+  return categories.find((c) => c.id === product.categoryId)?.name ?? "Uncategorized"
+}
+
+function SaleProductOption({
+  name,
+  categoryName,
+  price,
+  inTrigger = false,
+}: {
+  name: string
+  categoryName: string
+  price: number
+  inTrigger?: boolean
+}) {
+  return (
+    <span
+      className={cn(
+        "flex min-w-0 flex-1 items-center",
+        inTrigger ? "gap-2" : "gap-3 py-0.5"
+      )}
+    >
+      <span className="truncate font-medium text-foreground">{name}</span>
+      <span
+        className="shrink-0 text-muted-foreground/35"
+        aria-hidden
+      >
+        •
+      </span>
+      <span className="shrink-0 text-xs text-muted-foreground">{categoryName}</span>
+      <span
+        className="shrink-0 text-muted-foreground/35"
+        aria-hidden
+      >
+        •
+      </span>
+      <span className="shrink-0 font-mono text-xs font-medium tabular-nums text-muted-foreground">
+        {formatCurrency(price)}
+      </span>
+    </span>
+  )
+}
+
 export function SaleFormDialog({
   open,
   onOpenChange,
@@ -52,7 +99,7 @@ export function SaleFormDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <SaleForm
           key={String(open)}
           onOpenChange={onOpenChange}
@@ -71,6 +118,7 @@ function SaleForm({
   onSubmit: (values: SaleFormValues) => void
 }) {
   const { items: products } = useProducts()
+  const { items: categories } = useCategories()
   const [values, setValues] = React.useState<SaleFormState>(emptyValues)
 
   const sellableProducts = products.filter(
@@ -80,13 +128,12 @@ function SaleForm({
   const unitPrice = selectedProduct?.price ?? 0
   const total = values.quantity * unitPrice
 
-  const productItems = [
-    { label: "Select product", value: null as string | null },
-    ...sellableProducts.map((p) => ({
-      label: `${p.name} · ${formatCurrency(p.price!)}`,
-      value: p.id,
-    })),
-  ]
+  const productItems = sellableProducts.map((p) => ({
+    value: p.id,
+    name: p.name,
+    categoryName: getCategoryName(p, categories),
+    price: p.price!,
+  }))
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -111,7 +158,6 @@ function SaleForm({
         <Field>
           <FieldLabel htmlFor="sale-product">Product</FieldLabel>
           <Select
-            items={productItems}
             value={values.productId || null}
             onValueChange={(value) =>
               setValues((v) => ({
@@ -120,17 +166,34 @@ function SaleForm({
               }))
             }
           >
-            <SelectTrigger id="sale-product" className="w-full">
-              <SelectValue placeholder="Select product" />
+            <SelectTrigger
+              id="sale-product"
+              className="h-auto min-h-10 w-full py-2.5 *:data-[slot=select-value]:line-clamp-none *:data-[slot=select-value]:whitespace-normal"
+            >
+              <SelectValue placeholder="Select product">
+                {selectedProduct ? (
+                  <SaleProductOption
+                    inTrigger
+                    name={selectedProduct.name}
+                    categoryName={getCategoryName(selectedProduct, categories)}
+                    price={selectedProduct.price!}
+                  />
+                ) : null}
+              </SelectValue>
             </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
+            <SelectContent className="max-h-72">
+              <SelectGroup className="p-1.5">
                 {productItems.map((item) => (
                   <SelectItem
-                    key={item.value ?? "placeholder"}
+                    key={item.value}
                     value={item.value}
+                    className="py-2.5 pl-2.5 pr-8"
                   >
-                    {item.label}
+                    <SaleProductOption
+                      name={item.name}
+                      categoryName={item.categoryName}
+                      price={item.price}
+                    />
                   </SelectItem>
                 ))}
               </SelectGroup>
