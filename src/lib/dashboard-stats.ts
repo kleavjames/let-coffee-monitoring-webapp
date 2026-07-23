@@ -85,6 +85,24 @@ function getWeekRange(isoDate: string): { start: string; end: string } {
   return { start, end: addDays(start, 6) }
 }
 
+export type DateFilterPreset = "today" | "yesterday" | "week" | "all"
+
+export function getDateFilterRange(
+  preset: DateFilterPreset
+): { start: string; end: string } | null {
+  if (preset === "all") return null
+
+  const today = todayIso()
+
+  if (preset === "today") return { start: today, end: today }
+  if (preset === "yesterday") {
+    const yesterday = addDays(today, -1)
+    return { start: yesterday, end: yesterday }
+  }
+
+  return { start: getWeekStart(today), end: today }
+}
+
 function getLastWeekRange(today: string): { start: string; end: string } {
   const thisWeekStart = getWeekStart(today)
   const start = addDays(thisWeekStart, -7)
@@ -185,6 +203,16 @@ function sumExpensesInRange(
   return expenses
     .filter((expense) => expense.date >= start && expense.date <= end)
     .reduce((sum, expense) => sum + expense.amount, 0)
+}
+
+function sumQuantityInRange(
+  sales: Sale[],
+  start: string,
+  end: string
+): number {
+  return sales
+    .filter((sale) => sale.date >= start && sale.date <= end)
+    .reduce((sum, sale) => sum + sale.quantity, 0)
 }
 
 function formatPercentChange(
@@ -289,6 +317,64 @@ export function buildDashboardSummary(
       trend: weekProfitTrend?.label ?? null,
       trendUp: weekProfitTrend?.trendUp ?? true,
       description: "Mon–today · vs. last week",
+    },
+  ]
+}
+
+export function buildSoldSummary(
+  sales: Sale[],
+  formatValue: (value: number) => string
+): DashboardSummaryCard[] {
+  const today = todayIso()
+  const yesterday = addDays(today, -1)
+  const thisMonth = getThisMonthRange(today)
+  const lastMonth = getLastMonthRange(today)
+
+  const salesToday = sumSalesInRange(sales, today, today)
+  const salesYesterday = sumSalesInRange(sales, yesterday, yesterday)
+  const soldToday = sumQuantityInRange(sales, today, today)
+  const soldYesterday = sumQuantityInRange(sales, yesterday, yesterday)
+
+  const totalSales = sales.reduce((sum, sale) => sum + getSaleTotal(sale), 0)
+  const totalSold = sales.reduce((sum, sale) => sum + sale.quantity, 0)
+  const salesThisMonth = sumSalesInRange(sales, thisMonth.start, thisMonth.end)
+  const salesLastMonth = sumSalesInRange(sales, lastMonth.start, lastMonth.end)
+  const soldThisMonth = sumQuantityInRange(sales, thisMonth.start, thisMonth.end)
+  const soldLastMonth = sumQuantityInRange(sales, lastMonth.start, lastMonth.end)
+
+  const salesTodayTrend = formatPercentChange(salesToday, salesYesterday)
+  const soldTodayTrend = formatPercentChange(soldToday, soldYesterday)
+  const salesMonthTrend = formatPercentChange(salesThisMonth, salesLastMonth)
+  const soldMonthTrend = formatPercentChange(soldThisMonth, soldLastMonth)
+
+  return [
+    {
+      label: "Sales Today",
+      value: formatValue(salesToday),
+      trend: salesTodayTrend?.label ?? null,
+      trendUp: salesTodayTrend?.trendUp ?? true,
+      description: "Revenue today · vs. yesterday",
+    },
+    {
+      label: "Sold Today",
+      value: soldToday.toLocaleString(),
+      trend: soldTodayTrend?.label ?? null,
+      trendUp: soldTodayTrend?.trendUp ?? true,
+      description: "Units sold today · vs. yesterday",
+    },
+    {
+      label: "Total Sales",
+      value: formatValue(totalSales),
+      trend: salesMonthTrend?.label ?? null,
+      trendUp: salesMonthTrend?.trendUp ?? true,
+      description: "All-time revenue · month vs. last month",
+    },
+    {
+      label: "Total Sold",
+      value: totalSold.toLocaleString(),
+      trend: soldMonthTrend?.label ?? null,
+      trendUp: soldMonthTrend?.trendUp ?? true,
+      description: "All-time units · month vs. last month",
     },
   ]
 }

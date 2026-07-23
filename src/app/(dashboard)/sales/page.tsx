@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { SummaryCardsGrid } from "@/components/summary-cards-grid"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
@@ -39,6 +40,52 @@ import {
   SalesTableSkeleton,
 } from "@/components/page-skeletons"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  buildSoldSummary,
+  getDateFilterRange,
+  type DateFilterPreset,
+} from "@/lib/dashboard-stats"
+
+const DATE_FILTER_LABELS: Record<DateFilterPreset, string> = {
+  today: "Today",
+  yesterday: "Yesterday",
+  week: "This week",
+  all: "All",
+}
+
+function DateFilterTabs({
+  value,
+  onValueChange,
+  className,
+}: {
+  value: DateFilterPreset
+  onValueChange: (value: DateFilterPreset) => void
+  className?: string
+}) {
+  return (
+    <Tabs
+      value={value}
+      onValueChange={(next) => onValueChange(next as DateFilterPreset)}
+      className={className}
+    >
+      <TabsList>
+        {Object.entries(DATE_FILTER_LABELS).map(([preset, label]) => (
+          <TabsTrigger key={preset} value={preset}>
+            {label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  )
+}
+
+function matchesDateRange(
+  date: string,
+  range: { start: string; end: string } | null
+): boolean {
+  if (!range) return true
+  return date >= range.start && date <= range.end
+}
 
 export default function SalesPage() {
   const { items: sales, isLoading: salesLoading, add: addSale, remove: removeSale } =
@@ -52,19 +99,48 @@ export default function SalesPage() {
   const { items: products } = useProducts()
   const [saleFormOpen, setSaleFormOpen] = React.useState(false)
   const [expenseFormOpen, setExpenseFormOpen] = React.useState(false)
+  const [datePreset, setDatePreset] = React.useState<DateFilterPreset>("all")
 
-  const sortedSales = [...sales].sort((a, b) => (a.date < b.date ? 1 : -1))
-  const sortedExpenses = [...expenses].sort((a, b) =>
+  const dateRange = React.useMemo(
+    () => getDateFilterRange(datePreset),
+    [datePreset]
+  )
+
+  const filteredSales = React.useMemo(
+    () => sales.filter((sale) => matchesDateRange(sale.date, dateRange)),
+    [sales, dateRange]
+  )
+  const filteredExpenses = React.useMemo(
+    () =>
+      expenses.filter((expense) => matchesDateRange(expense.date, dateRange)),
+    [expenses, dateRange]
+  )
+
+  const sortedSales = [...filteredSales].sort((a, b) =>
     a.date < b.date ? 1 : -1
   )
-  const salesPagination = usePagination(sortedSales)
-  const expensesPagination = usePagination(sortedExpenses)
+  const sortedExpenses = [...filteredExpenses].sort((a, b) =>
+    a.date < b.date ? 1 : -1
+  )
+  const salesPagination = usePagination(sortedSales, {
+    resetKey: datePreset,
+  })
+  const expensesPagination = usePagination(sortedExpenses, {
+    resetKey: datePreset,
+  })
 
-  const totalSales = sales.reduce(
+  const totalSales = filteredSales.reduce(
     (sum, sale) => sum + getSaleTotal(sale),
     0
   )
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
+  const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
+  const hasDateFilter = datePreset !== "all"
+  const dateFilterLabel = DATE_FILTER_LABELS[datePreset].toLowerCase()
+
+  const soldSummaryCards = React.useMemo(
+    () => buildSoldSummary(sales, formatCurrency),
+    [sales]
+  )
 
   function handleAddSale(values: SaleFormValues[]) {
     for (const sale of values) {
@@ -98,6 +174,27 @@ export default function SalesPage() {
           <TabsTrigger value="expenses">Expenses</TabsTrigger>
         </TabsList>
 
+        {salesLoading ? (
+          <div className="mt-4 flex flex-col gap-4 sm:flex-row">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Card key={`sold-summary-skeleton-${index}`} className="flex-1">
+                <CardHeader>
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-8 w-16" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-4 w-28" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <SummaryCardsGrid
+            cards={soldSummaryCards}
+            className="mt-4 flex flex-col gap-4 sm:flex-row *:flex-1"
+          />
+        )}
+
         <TabsContent value="sales" className="mt-4">
           <Card>
             <CardHeader>
@@ -107,7 +204,8 @@ export default function SalesPage() {
                   <Skeleton className="h-4 w-48" />
                 ) : (
                   <>
-                    {sortedSales.length} record(s) · Total{" "}
+                    {sortedSales.length} record(s)
+                    {hasDateFilter ? ` · ${dateFilterLabel}` : ""} · Total{" "}
                     <span className="font-mono">{formatCurrency(totalSales)}</span>
                   </>
                 )}
@@ -120,6 +218,11 @@ export default function SalesPage() {
               </CardAction>
             </CardHeader>
             <CardContent>
+              <DateFilterTabs
+                value={datePreset}
+                onValueChange={setDatePreset}
+                className="mb-4"
+              />
               {salesLoading ? (
                 <SalesTableSkeleton />
               ) : (
@@ -142,7 +245,9 @@ export default function SalesPage() {
                           colSpan={6}
                           className="h-24 text-center text-muted-foreground"
                         >
-                          No sales logged yet.
+                          {sales.length === 0
+                            ? "No sales logged yet."
+                            : "No sales match the selected date filter."}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -205,7 +310,8 @@ export default function SalesPage() {
                   <Skeleton className="h-4 w-48" />
                 ) : (
                   <>
-                    {sortedExpenses.length} record(s) · Total{" "}
+                    {sortedExpenses.length} record(s)
+                    {hasDateFilter ? ` · ${dateFilterLabel}` : ""} · Total{" "}
                     <span className="font-mono">
                       {formatCurrency(totalExpenses)}
                     </span>
@@ -220,6 +326,11 @@ export default function SalesPage() {
               </CardAction>
             </CardHeader>
             <CardContent>
+              <DateFilterTabs
+                value={datePreset}
+                onValueChange={setDatePreset}
+                className="mb-4"
+              />
               {expensesLoading ? (
                 <ExpensesTableSkeleton />
               ) : (
@@ -241,7 +352,9 @@ export default function SalesPage() {
                           colSpan={5}
                           className="h-24 text-center text-muted-foreground"
                         >
-                          No expenses recorded yet.
+                          {expenses.length === 0
+                            ? "No expenses recorded yet."
+                            : "No expenses match the selected date filter."}
                         </TableCell>
                       </TableRow>
                     ) : (

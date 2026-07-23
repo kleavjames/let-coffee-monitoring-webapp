@@ -22,6 +22,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import { DashboardSkeleton } from "@/components/page-skeletons"
+import { SummaryCardsGrid } from "@/components/summary-cards-grid"
 import {
   Table,
   TableBody,
@@ -38,7 +39,6 @@ import {
   buildTopProducts,
   type DashboardPeriodMetric,
   type DashboardPeriodSummary,
-  type DashboardSummaryCard,
 } from "@/lib/dashboard-stats"
 import { formatCurrency } from "@/lib/costing"
 import { useCategories, useExpenses, useProducts, useSales } from "@/lib/data-provider"
@@ -49,49 +49,6 @@ const salesChartConfig = {
     color: "var(--primary)",
   },
 } satisfies ChartConfig
-
-function SummaryCardsGrid({
-  cards,
-  className,
-}: {
-  cards: DashboardSummaryCard[]
-  className?: string
-}) {
-  return (
-    <div
-      className={
-        className ??
-        "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-      }
-    >
-      {cards.map((card) => (
-        <Card key={card.label}>
-          <CardHeader>
-            <CardDescription>{card.label}</CardDescription>
-            <CardTitle className="font-mono text-2xl font-semibold tracking-tight">
-              {card.value}
-            </CardTitle>
-            {card.trend ? (
-              <CardAction>
-                <Badge variant={card.trendUp ? "secondary" : "destructive"}>
-                  {card.trendUp ? (
-                    <ArrowUpRight data-icon="inline-start" />
-                  ) : (
-                    <ArrowDownRight data-icon="inline-start" />
-                  )}
-                  <span className="font-mono">{card.trend}</span>
-                </Badge>
-              </CardAction>
-            ) : null}
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            {card.description}
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  )
-}
 
 function PeriodMetricRow({ metric }: { metric: DashboardPeriodMetric }) {
   return (
