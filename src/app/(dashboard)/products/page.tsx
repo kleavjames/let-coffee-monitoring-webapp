@@ -208,7 +208,6 @@ export default function ProductsPage() {
                 <TableHead>Price</TableHead>
                 <TableHead>Cost</TableHead>
                 <TableHead>Margin / Profit</TableHead>
-                <TableHead>Recipe</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
@@ -217,7 +216,7 @@ export default function ProductsPage() {
               {products.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={7}
                     className="h-24 text-center text-muted-foreground"
                   >
                     No products yet. Add your first one to get started.
@@ -226,7 +225,7 @@ export default function ProductsPage() {
               ) : filteredProducts.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={7}
                     className="h-24 text-center text-muted-foreground"
                   >
                     No products match your search or filter.
@@ -253,7 +252,86 @@ export default function ProductsPage() {
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
-                          {product.name}
+                          <Popover>
+                            <PopoverTrigger className="text-left underline-offset-4 hover:underline">
+                              {product.name}
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80">
+                              <PopoverTitle>{product.name} recipe</PopoverTitle>
+                              {product.recipe.length === 0 ? (
+                                <p className="text-muted-foreground">
+                                  No recipe items set.
+                                </p>
+                              ) : (
+                                <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-2 text-sm">
+                                  {product.recipe.map((item) => {
+                                    const itemKey = getRecipeItemKey(item);
+
+                                    if (isProductRecipeItem(item)) {
+                                      const specialProduct = products.find(
+                                        (p) => p.id === item.productId,
+                                      );
+                                      if (!specialProduct) return null;
+                                      return (
+                                        <React.Fragment key={itemKey}>
+                                          <span className="leading-snug">
+                                            {specialProduct.name}
+                                            <Badge
+                                              variant="outline"
+                                              className="ml-2 align-middle text-[10px]"
+                                            >
+                                              Special
+                                            </Badge>
+                                          </span>
+                                          <span className="font-mono text-right text-muted-foreground tabular-nums whitespace-nowrap">
+                                            {formatProductRecipeQuantity(
+                                              item.quantity,
+                                            )}
+                                          </span>
+                                          <span className="font-mono text-right text-muted-foreground tabular-nums whitespace-nowrap">
+                                            {formatCurrency(
+                                              computeProductRecipeItemCost(
+                                                item,
+                                                specialProduct,
+                                                ingredients,
+                                                products,
+                                              ),
+                                            )}
+                                          </span>
+                                        </React.Fragment>
+                                      );
+                                    }
+
+                                    const ingredient = ingredients.find(
+                                      (i) => i.id === item.ingredientId,
+                                    );
+                                    if (!ingredient) return null;
+                                    return (
+                                      <React.Fragment key={itemKey}>
+                                        <span className="leading-snug">
+                                          {ingredient.name}
+                                        </span>
+                                        <span className="font-mono text-right text-muted-foreground tabular-nums whitespace-nowrap">
+                                          {formatRecipeQuantity(
+                                            item,
+                                            ingredient.unit,
+                                          )}
+                                        </span>
+                                        <span className="font-mono text-right text-muted-foreground tabular-nums whitespace-nowrap">
+                                          {formatCurrency(
+                                            computeRecipeItemCost(
+                                              item,
+                                              ingredient,
+                                            ),
+                                          )}
+                                        </span>
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </PopoverContent>
+                          </Popover>
                           {product.special && (
                             <Badge variant="outline" className="text-[10px]">
                               Special
@@ -291,88 +369,6 @@ export default function ProductsPage() {
                         ) : (
                           <span className="text-sm text-muted-foreground">—</span>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <Popover>
-                          <PopoverTrigger className="text-sm text-foreground underline-offset-4 hover:underline">
-                            View ({product.recipe.length})
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80">
-                            <PopoverTitle>{product.name} recipe</PopoverTitle>
-                            {product.recipe.length === 0 ? (
-                              <p className="text-muted-foreground">
-                                No recipe items set.
-                              </p>
-                            ) : (
-                              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-2 text-sm">
-                                {product.recipe.map((item) => {
-                                  const itemKey = getRecipeItemKey(item);
-
-                                  if (isProductRecipeItem(item)) {
-                                    const specialProduct = products.find(
-                                      (p) => p.id === item.productId,
-                                    );
-                                    if (!specialProduct) return null;
-                                    return (
-                                      <React.Fragment key={itemKey}>
-                                        <span className="leading-snug">
-                                          {specialProduct.name}
-                                          <Badge
-                                            variant="outline"
-                                            className="ml-2 align-middle text-[10px]"
-                                          >
-                                            Special
-                                          </Badge>
-                                        </span>
-                                        <span className="font-mono text-right text-muted-foreground tabular-nums whitespace-nowrap">
-                                          {formatProductRecipeQuantity(
-                                            item.quantity,
-                                          )}
-                                        </span>
-                                        <span className="font-mono text-right text-muted-foreground tabular-nums whitespace-nowrap">
-                                          {formatCurrency(
-                                            computeProductRecipeItemCost(
-                                              item,
-                                              specialProduct,
-                                              ingredients,
-                                              products,
-                                            ),
-                                          )}
-                                        </span>
-                                      </React.Fragment>
-                                    );
-                                  }
-
-                                  const ingredient = ingredients.find(
-                                    (i) => i.id === item.ingredientId,
-                                  );
-                                  if (!ingredient) return null;
-                                  return (
-                                    <React.Fragment key={itemKey}>
-                                      <span className="leading-snug">
-                                        {ingredient.name}
-                                      </span>
-                                      <span className="font-mono text-right text-muted-foreground tabular-nums whitespace-nowrap">
-                                        {formatRecipeQuantity(
-                                          item,
-                                          ingredient.unit,
-                                        )}
-                                      </span>
-                                      <span className="font-mono text-right text-muted-foreground tabular-nums whitespace-nowrap">
-                                        {formatCurrency(
-                                          computeRecipeItemCost(
-                                            item,
-                                            ingredient,
-                                          ),
-                                        )}
-                                      </span>
-                                    </React.Fragment>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </PopoverContent>
-                        </Popover>
                       </TableCell>
                       <TableCell>
                         <Badge

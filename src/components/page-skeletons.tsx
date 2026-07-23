@@ -107,7 +107,6 @@ export function ProductsPageSkeleton() {
               "Price",
               "Cost",
               "Margin / Profit",
-              "Recipe",
               "Status",
               "",
             ]}
@@ -118,7 +117,6 @@ export function ProductsPageSkeleton() {
               "w-16",
               "w-16",
               "w-28",
-              "w-16",
               "w-16",
               "w-8",
             ]}
