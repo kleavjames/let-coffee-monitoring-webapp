@@ -43,9 +43,10 @@ import {
 } from "@/components/categories/category-form-dialog"
 import { useCategories } from "@/lib/data-provider"
 import type { ProductCategory } from "@/lib/types"
+import { CategoriesPageSkeleton } from "@/components/page-skeletons"
 
 export default function CategoriesPage() {
-  const { items, products, add, update, remove } = useCategories()
+  const { items, products, isLoading, add, update, remove } = useCategories()
   const [formOpen, setFormOpen] = React.useState(false)
   const [editingCategory, setEditingCategory] =
     React.useState<ProductCategory | null>(null)
@@ -91,6 +92,10 @@ export default function CategoriesPage() {
     remove(deleteTarget.id)
     toast.success(`${deleteTarget.name} deleted`)
     setDeleteTarget(null)
+  }
+
+  if (isLoading) {
+    return <CategoriesPageSkeleton />
   }
 
   return (

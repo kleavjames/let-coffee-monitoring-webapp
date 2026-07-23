@@ -69,9 +69,10 @@ import { useCategories, useIngredients, useProducts } from "@/lib/data-provider"
 import { getRecipeItemKey, isProductRecipeItem, formatProductRecipeQuantity } from "@/lib/recipe";
 import type { Product } from "@/lib/types";
 import { formatRecipeQuantity } from "@/lib/units";
+import { ProductsPageSkeleton } from "@/components/page-skeletons";
 
 export default function ProductsPage() {
-  const { items: products, add, update, remove } = useProducts();
+  const { items: products, isLoading, add, update, remove } = useProducts();
   const { items: ingredients } = useIngredients();
   const { items: categories } = useCategories();
   const [formOpen, setFormOpen] = React.useState(false);
@@ -139,6 +140,10 @@ export default function ProductsPage() {
     remove(deleteTarget.id);
     toast.success(`${deleteTarget.name} deleted`);
     setDeleteTarget(null);
+  }
+
+  if (isLoading) {
+    return <ProductsPageSkeleton />;
   }
 
   return (

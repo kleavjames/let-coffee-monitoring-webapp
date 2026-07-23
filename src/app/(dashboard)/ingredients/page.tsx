@@ -54,6 +54,7 @@ import {
 import { formatCurrency, getIngredientCostDisplay } from "@/lib/costing"
 import { useIngredients } from "@/lib/data-provider"
 import type { Ingredient, IngredientUnit } from "@/lib/types"
+import { IngredientsPageSkeleton } from "@/components/page-skeletons"
 
 const unitFilterItems: { label: string; value: string }[] = [
   { label: "All units", value: "all" },
@@ -67,7 +68,7 @@ const unitFilterItems: { label: string; value: string }[] = [
 ]
 
 export default function IngredientsPage() {
-  const { items, add, update, remove } = useIngredients()
+  const { items, isLoading, add, update, remove } = useIngredients()
   const [formOpen, setFormOpen] = React.useState(false)
   const [editingIngredient, setEditingIngredient] =
     React.useState<Ingredient | null>(null)
@@ -118,6 +119,10 @@ export default function IngredientsPage() {
     remove(deleteTarget.id)
     toast.success(`${deleteTarget.name} deleted`)
     setDeleteTarget(null)
+  }
+
+  if (isLoading) {
+    return <IngredientsPageSkeleton />
   }
 
   return (
