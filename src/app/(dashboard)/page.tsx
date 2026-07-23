@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/card"
 import {
   ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
@@ -47,6 +49,10 @@ const salesChartConfig = {
   sales: {
     label: "Sales",
     color: "var(--primary)",
+  },
+  expenses: {
+    label: "Expenses",
+    color: "var(--chart-2)",
   },
 } satisfies ChartConfig
 
@@ -115,7 +121,10 @@ export default function DashboardPage() {
     () => buildTopProducts(sales, products, categories),
     [sales, products, categories]
   )
-  const salesChartData = useMemo(() => buildSalesChartData(sales), [sales])
+  const salesChartData = useMemo(
+    () => buildSalesChartData(sales, expenses),
+    [sales, expenses]
+  )
   const recentSales = useMemo(
     () => buildRecentSales(sales, products),
     [sales, products]
@@ -177,7 +186,9 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Sales per day</CardTitle>
-          <CardDescription>Last 14 days from logged sales</CardDescription>
+          <CardDescription>
+            Last 14 days from logged sales and expenses
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <ChartContainer
@@ -198,6 +209,18 @@ export default function DashboardPage() {
                     stopOpacity={0.1}
                   />
                 </linearGradient>
+                <linearGradient id="fillExpenses" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="5%"
+                    stopColor="var(--color-expenses)"
+                    stopOpacity={0.8}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="var(--color-expenses)"
+                    stopOpacity={0.1}
+                  />
+                </linearGradient>
               </defs>
               <CartesianGrid vertical={false} />
               <XAxis
@@ -209,13 +232,25 @@ export default function DashboardPage() {
               />
               <ChartTooltip
                 cursor={false}
-                content={<ChartTooltipContent indicator="dot" />}
+                content={
+                  <ChartTooltipContent
+                    indicator="dot"
+                    formatter={(value) => formatCurrency(Number(value))}
+                  />
+                }
               />
+              <ChartLegend content={<ChartLegendContent />} />
               <Area
                 dataKey="sales"
                 type="natural"
                 fill="url(#fillSales)"
                 stroke="var(--color-sales)"
+              />
+              <Area
+                dataKey="expenses"
+                type="natural"
+                fill="url(#fillExpenses)"
+                stroke="var(--color-expenses)"
               />
             </AreaChart>
           </ChartContainer>

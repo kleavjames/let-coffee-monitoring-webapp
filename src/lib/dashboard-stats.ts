@@ -14,6 +14,7 @@ export type DashboardSummaryCard = {
 export type DashboardChartPoint = {
   date: string
   sales: number
+  expenses: number
 }
 
 export type DashboardRecentSale = {
@@ -479,6 +480,7 @@ export function buildTopProducts(
 
 export function buildSalesChartData(
   sales: Sale[],
+  expenses: Expense[],
   days = 14
 ): DashboardChartPoint[] {
   const today = todayIso()
@@ -486,10 +488,10 @@ export function buildSalesChartData(
 
   for (let offset = days - 1; offset >= 0; offset -= 1) {
     const isoDate = addDays(today, -offset)
-    const total = sumSalesInRange(sales, isoDate, isoDate)
     points.push({
       date: formatChartDate(isoDate),
-      sales: total,
+      sales: sumSalesInRange(sales, isoDate, isoDate),
+      expenses: sumExpensesInRange(expenses, isoDate, isoDate),
     })
   }
 
