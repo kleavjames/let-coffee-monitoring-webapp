@@ -1,4 +1,9 @@
-import type { Expense, Ingredient, Product, Sale } from "@/lib/types"
+import type { Expense, Ingredient, Product, ProductCategory, Sale } from "@/lib/types"
+
+export const seedCategories: ProductCategory[] = [
+  { id: "cat-hot-coffee", name: "Hot Coffee" },
+  { id: "cat-iced-coffee", name: "Iced Coffee" },
+]
 
 export const seedIngredients: Ingredient[] = [
   {
@@ -55,7 +60,7 @@ export const seedProducts: Product[] = [
   {
     id: "prod-espresso",
     name: "Espresso",
-    category: "Hot Coffee",
+    categoryId: "cat-hot-coffee",
     price: 85,
     status: "active",
     recipe: [
@@ -66,7 +71,7 @@ export const seedProducts: Product[] = [
   {
     id: "prod-americano",
     name: "Americano",
-    category: "Hot Coffee",
+    categoryId: "cat-hot-coffee",
     price: 95,
     status: "active",
     recipe: [
@@ -77,7 +82,7 @@ export const seedProducts: Product[] = [
   {
     id: "prod-latte",
     name: "Cafe Latte",
-    category: "Hot Coffee",
+    categoryId: "cat-hot-coffee",
     price: 120,
     status: "active",
     recipe: [
@@ -89,7 +94,7 @@ export const seedProducts: Product[] = [
   {
     id: "prod-cappuccino",
     name: "Cappuccino",
-    category: "Hot Coffee",
+    categoryId: "cat-hot-coffee",
     price: 120,
     status: "active",
     recipe: [
@@ -101,7 +106,7 @@ export const seedProducts: Product[] = [
   {
     id: "prod-mocha",
     name: "Cafe Mocha",
-    category: "Hot Coffee",
+    categoryId: "cat-hot-coffee",
     price: 130,
     status: "active",
     recipe: [
@@ -114,7 +119,7 @@ export const seedProducts: Product[] = [
   {
     id: "prod-iced-latte",
     name: "Iced Latte",
-    category: "Iced Coffee",
+    categoryId: "cat-iced-coffee",
     price: 130,
     status: "active",
     recipe: [

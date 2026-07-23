@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Coffee, LayoutDashboard, ReceiptText, Wheat } from "lucide-react"
+import { Coffee, FolderOpen, LayoutDashboard, ReceiptText, Wheat } from "lucide-react"
 
 import {
   Sidebar,
@@ -20,6 +20,7 @@ import {
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Products", url: "/products", icon: Coffee },
+  { title: "Categories", url: "/categories", icon: FolderOpen },
   { title: "Sales", url: "/sales", icon: ReceiptText },
   { title: "Ingredients", url: "/ingredients", icon: Wheat },
 ]

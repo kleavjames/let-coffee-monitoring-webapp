@@ -3,12 +3,20 @@
 import * as React from "react"
 
 import {
+  seedCategories,
   seedExpenses,
   seedIngredients,
   seedProducts,
   seedSales,
 } from "@/lib/mock-data"
-import type { Expense, Ingredient, IngredientUnit, Product, Sale } from "@/lib/types"
+import type {
+  Expense,
+  Ingredient,
+  IngredientUnit,
+  Product,
+  ProductCategory,
+  Sale,
+} from "@/lib/types"
 import { normalizeRecipeItem } from "@/lib/units"
 
 const STORAGE_KEY = "let-coffee-tracker:data"
@@ -54,6 +62,46 @@ function normalizeIngredient(raw: LegacyIngredient): Ingredient {
   }
 }
 
+type LegacyProduct = Omit<Product, "categoryId"> & {
+  categoryId?: string
+  category?: string
+}
+
+function migrateCategoriesAndProducts(
+  products: LegacyProduct[],
+  categories: ProductCategory[]
+): { categories: ProductCategory[]; products: Product[] } {
+  const nextCategories = [...categories]
+  const nameToId = new Map(nextCategories.map((category) => [category.name, category.id]))
+
+  const migratedProducts = products.map((product) => {
+    if (product.categoryId) {
+      const { category: _legacyCategory, ...rest } = product
+      return rest as Product
+    }
+
+    const legacyName = product.category?.trim()
+    if (!legacyName) {
+      return {
+        ...product,
+        categoryId: nextCategories[0]?.id ?? "",
+      } as Product
+    }
+
+    let categoryId = nameToId.get(legacyName)
+    if (!categoryId) {
+      categoryId = `cat-${legacyName.toLowerCase().replace(/\s+/g, "-")}-${Date.now().toString(36)}`
+      nextCategories.push({ id: categoryId, name: legacyName })
+      nameToId.set(legacyName, categoryId)
+    }
+
+    const { category: _legacyCategory, ...rest } = product
+    return { ...rest, categoryId } as Product
+  })
+
+  return { categories: nextCategories, products: migratedProducts }
+}
+
 function normalizeProducts(
   products: Product[],
   ingredients: Ingredient[]
@@ -72,6 +120,7 @@ function normalizeProducts(
 type StoredData = {
   products: Product[]
   ingredients: Ingredient[]
+  categories: ProductCategory[]
   sales: Sale[]
   expenses: Expense[]
 }
@@ -79,11 +128,15 @@ type StoredData = {
 type AppDataContextValue = {
   products: Product[]
   ingredients: Ingredient[]
+  categories: ProductCategory[]
   sales: Sale[]
   expenses: Expense[]
   addProduct: (product: Omit<Product, "id">) => void
   updateProduct: (id: string, product: Omit<Product, "id">) => void
   removeProduct: (id: string) => void
+  addCategory: (category: Omit<ProductCategory, "id">) => void
+  updateCategory: (id: string, category: Omit<ProductCategory, "id">) => void
+  removeCategory: (id: string) => void
   addIngredient: (ingredient: Omit<Ingredient, "id">) => void
   updateIngredient: (id: string, ingredient: Omit<Ingredient, "id">) => void
   removeIngredient: (id: string) => void
@@ -101,6 +154,8 @@ function generateId(prefix: string) {
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = React.useState<Product[]>(seedProducts)
+  const [categories, setCategories] =
+    React.useState<ProductCategory[]>(seedCategories)
   const [ingredients, setIngredients] =
     React.useState<Ingredient[]>(seedIngredients)
   const [sales, setSales] = React.useState<Sale[]>(seedSales)
@@ -118,11 +173,21 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         const normalizedIngredients = parsed.ingredients
           ? parsed.ingredients.map(normalizeIngredient)
           : seedIngredients
+        const baseCategories = parsed.categories ?? seedCategories
+        const baseProducts = parsed.products ?? seedProducts
+        const migrated = migrateCategoriesAndProducts(
+          baseProducts as LegacyProduct[],
+          baseCategories
+        )
+
         if (parsed.ingredients) {
           setIngredients(normalizedIngredients)
         }
-        if (parsed.products) {
-          setProducts(normalizeProducts(parsed.products, normalizedIngredients))
+        if (parsed.products || parsed.categories) {
+          setCategories(migrated.categories)
+          setProducts(
+            normalizeProducts(migrated.products, normalizedIngredients)
+          )
         }
         if (parsed.sales) setSales(parsed.sales)
         if (parsed.expenses) setExpenses(parsed.expenses)
@@ -137,13 +202,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     if (!hydrated) return
-    const data: StoredData = { products, ingredients, sales, expenses }
+    const data: StoredData = { products, ingredients, categories, sales, expenses }
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
     } catch {
       // Ignore write errors (e.g. storage quota, private mode).
     }
-  }, [hydrated, products, ingredients, sales, expenses])
+  }, [hydrated, products, ingredients, categories, sales, expenses])
 
   const addProduct = React.useCallback((product: Omit<Product, "id">) => {
     setProducts((prev) => [...prev, { ...product, id: generateId("prod") }])
@@ -160,6 +225,23 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const removeProduct = React.useCallback((id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id))
+  }, [])
+
+  const addCategory = React.useCallback((category: Omit<ProductCategory, "id">) => {
+    setCategories((prev) => [...prev, { ...category, id: generateId("cat") }])
+  }, [])
+
+  const updateCategory = React.useCallback(
+    (id: string, category: Omit<ProductCategory, "id">) => {
+      setCategories((prev) =>
+        prev.map((item) => (item.id === id ? { ...category, id } : item))
+      )
+    },
+    []
+  )
+
+  const removeCategory = React.useCallback((id: string) => {
+    setCategories((prev) => prev.filter((item) => item.id !== id))
   }, [])
 
   const addIngredient = React.useCallback(
@@ -205,11 +287,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     () => ({
       products,
       ingredients,
+      categories,
       sales,
       expenses,
       addProduct,
       updateProduct,
       removeProduct,
+      addCategory,
+      updateCategory,
+      removeCategory,
       addIngredient,
       updateIngredient,
       removeIngredient,
@@ -221,11 +307,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     [
       products,
       ingredients,
+      categories,
       sales,
       expenses,
       addProduct,
       updateProduct,
       removeProduct,
+      addCategory,
+      updateCategory,
+      removeCategory,
       addIngredient,
       updateIngredient,
       removeIngredient,
@@ -258,6 +348,18 @@ export function useProducts() {
     add: addProduct,
     update: updateProduct,
     remove: removeProduct,
+  }
+}
+
+export function useCategories() {
+  const { categories, products, addCategory, updateCategory, removeCategory } =
+    useAppData()
+  return {
+    items: categories,
+    products,
+    add: addCategory,
+    update: updateCategory,
+    remove: removeCategory,
   }
 }
 

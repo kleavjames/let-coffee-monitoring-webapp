@@ -17,12 +17,17 @@ export type RecipeItem = {
   unit?: RecipeDisplayUnit
 }
 
+export type ProductCategory = {
+  id: string
+  name: string
+}
+
 export type ProductStatus = "active" | "inactive"
 
 export type Product = {
   id: string
   name: string
-  category: string
+  categoryId: string
   price: number
   status: ProductStatus
   recipe: RecipeItem[]

@@ -54,13 +54,14 @@ import {
   computeRecipeItemCost,
   formatCurrency,
 } from "@/lib/costing";
-import { useIngredients, useProducts } from "@/lib/data-provider";
+import { useCategories, useIngredients, useProducts } from "@/lib/data-provider";
 import type { Product } from "@/lib/types";
 import { formatRecipeQuantity } from "@/lib/units";
 
 export default function ProductsPage() {
   const { items: products, add, update, remove } = useProducts();
   const { items: ingredients } = useIngredients();
+  const { items: categories } = useCategories();
   const [formOpen, setFormOpen] = React.useState(false);
   const [editingProduct, setEditingProduct] = React.useState<Product | null>(
     null,
@@ -140,13 +141,16 @@ export default function ProductsPage() {
                     product,
                     ingredients,
                   );
+                  const category = categories.find(
+                    (item) => item.id === product.categoryId,
+                  );
                   return (
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">
                         {product.name}
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {product.category}
+                        {category?.name ?? "Uncategorized"}
                       </TableCell>
                       <TableCell className="font-mono">
                         {formatCurrency(product.price)}

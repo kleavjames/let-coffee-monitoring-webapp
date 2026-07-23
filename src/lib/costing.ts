@@ -1,5 +1,9 @@
 import type { Ingredient, IngredientUnit, Product, RecipeItem } from "@/lib/types"
-import { toIngredientQuantity } from "@/lib/units"
+import {
+  getResolvedRecipeUnit,
+  isCountUnit,
+  toBaseRecipeQuantity,
+} from "@/lib/units"
 
 export function getIngredientCostPerUnit(
   ingredient: Pick<Ingredient, "purchasePrice" | "packageQuantity">
@@ -27,12 +31,47 @@ export function computeRecipeItemCost(
   item: RecipeItem,
   ingredient: Ingredient
 ): number {
-  const quantityInIngredientUnit = toIngredientQuantity(
+  const resolvedUnit = getResolvedRecipeUnit(item, ingredient.unit)
+  const { cost } = getIngredientCostDisplay(ingredient)
+  const { amount } = toBaseRecipeQuantity(
     item.quantity,
-    item.unit,
+    resolvedUnit,
     ingredient.unit
   )
-  return getIngredientCostPerUnit(ingredient) * quantityInIngredientUnit
+  return cost * amount
+}
+
+export function formatRecipeItemCostBreakdown(
+  item: RecipeItem,
+  ingredient: Ingredient
+): string | null {
+  if (isCountUnit(ingredient.unit)) {
+    const cost = getIngredientCostPerUnit(ingredient)
+    return `${item.quantity} ${ingredient.unit} × ${formatCurrency(cost)}`
+  }
+
+  const resolvedUnit = getResolvedRecipeUnit(item, ingredient.unit)
+  const { cost, unit: costUnit } = getIngredientCostDisplay(ingredient)
+  const { amount, unit: amountUnit } = toBaseRecipeQuantity(
+    item.quantity,
+    resolvedUnit,
+    ingredient.unit
+  )
+
+  if (amount <= 0) return null
+
+  const formattedAmount = Number.isInteger(amount)
+    ? amount.toLocaleString()
+    : amount.toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      })
+
+  if (resolvedUnit && resolvedUnit !== amountUnit) {
+    return `${item.quantity} ${resolvedUnit} (${formattedAmount} ${amountUnit}) × ${formatCurrency(cost)}/${costUnit}`
+  }
+
+  return `${formattedAmount} ${amountUnit} × ${formatCurrency(cost)}/${costUnit}`
 }
 
 export function computeProductCost(

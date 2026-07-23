@@ -8,6 +8,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar"
 const pageTitles: Record<string, string> = {
   "/": "Dashboard",
   "/products": "Products",
+  "/categories": "Categories",
   "/sales": "Sales",
   "/ingredients": "Ingredients",
 }

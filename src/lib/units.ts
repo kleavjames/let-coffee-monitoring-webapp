@@ -95,6 +95,48 @@ export function toIngredientQuantity(
   return quantity
 }
 
+/** Recipe quantity normalized to g, ml, or count units for costing. */
+export function toBaseRecipeQuantity(
+  quantity: number,
+  displayUnit: RecipeDisplayUnit | undefined,
+  ingredientUnit: IngredientUnit
+): { amount: number; unit: IngredientUnit } {
+  if (isCountUnit(ingredientUnit)) {
+    return { amount: quantity, unit: ingredientUnit }
+  }
+
+  const unit = displayUnit ?? getDefaultRecipeUnit(ingredientUnit)
+  if (!unit) {
+    return { amount: quantity, unit: ingredientUnit }
+  }
+
+  if (isWeightUnit(ingredientUnit)) {
+    if (unit === "g") return { amount: quantity, unit: "g" }
+    if (unit === "oz") {
+      return { amount: quantity * GRAMS_PER_OZ, unit: "g" }
+    }
+    return { amount: 0, unit: "g" }
+  }
+
+  if (isVolumeUnit(ingredientUnit)) {
+    if (unit === "ml") return { amount: quantity, unit: "ml" }
+    if (unit === "oz") {
+      return { amount: quantity * ML_PER_FL_OZ, unit: "ml" }
+    }
+    return { amount: 0, unit: "ml" }
+  }
+
+  return { amount: quantity, unit: ingredientUnit }
+}
+
+export function getResolvedRecipeUnit(
+  item: RecipeItem,
+  ingredientUnit: IngredientUnit
+): RecipeDisplayUnit | undefined {
+  if (isCountUnit(ingredientUnit)) return undefined
+  return item.unit ?? getDefaultRecipeUnit(ingredientUnit)
+}
+
 export function formatRecipeQuantity(
   item: RecipeItem,
   ingredientUnit: IngredientUnit

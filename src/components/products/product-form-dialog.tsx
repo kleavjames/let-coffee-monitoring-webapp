@@ -35,8 +35,9 @@ import {
   computeProjectedPrices,
   computeRecipeItemCost,
   formatCurrency,
+  formatRecipeItemCostBreakdown,
 } from "@/lib/costing"
-import { useIngredients } from "@/lib/data-provider"
+import { useCategories, useIngredients } from "@/lib/data-provider"
 import type {
   Ingredient,
   Product,
@@ -47,6 +48,7 @@ import type {
 import {
   getDefaultRecipeUnit,
   getRecipeUnitOptions,
+  getResolvedRecipeUnit,
   isCountUnit,
 } from "@/lib/units"
 
@@ -54,7 +56,7 @@ export type ProductFormValues = Omit<Product, "id">
 
 const emptyValues: ProductFormValues = {
   name: "",
-  category: "",
+  categoryId: "",
   price: 0,
   status: "active",
   recipe: [],
@@ -106,11 +108,12 @@ function ProductForm({
   onSubmit: (values: ProductFormValues) => void
 }) {
   const { items: ingredients } = useIngredients()
+  const { items: categories } = useCategories()
   const [values, setValues] = React.useState<ProductFormValues>(() =>
     product
       ? {
           name: product.name,
-          category: product.category,
+          categoryId: product.categoryId,
           price: product.price,
           status: product.status,
           recipe: product.recipe,
@@ -147,6 +150,14 @@ function ProductForm({
     ...availableIngredients.map((ingredient) => ({
       label: `${ingredient.name} (${ingredient.unit})`,
       value: ingredient.id,
+    })),
+  ]
+
+  const categoryItems = [
+    { label: "Select category", value: null as string | null },
+    ...categories.map((category) => ({
+      label: category.name,
+      value: category.id,
     })),
   ]
 
@@ -200,7 +211,7 @@ function ProductForm({
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
-    if (!values.name.trim() || !values.category.trim()) return
+    if (!values.name.trim() || !values.categoryId) return
     onSubmit(values)
     onOpenChange(false)
   }
@@ -233,15 +244,32 @@ function ProductForm({
           <div className="grid grid-cols-2 gap-4">
             <Field>
               <FieldLabel htmlFor="product-category">Category</FieldLabel>
-              <Input
-                id="product-category"
-                value={values.category}
-                onChange={(e) =>
-                  setValues((v) => ({ ...v, category: e.target.value }))
+              <Select
+                items={categoryItems}
+                value={values.categoryId || null}
+                onValueChange={(value) =>
+                  setValues((v) => ({
+                    ...v,
+                    categoryId: (value as string | null) ?? "",
+                  }))
                 }
-                placeholder="e.g. Hot Coffee"
-                required
-              />
+              >
+                <SelectTrigger id="product-category" className="w-full">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {categoryItems.map((item) => (
+                      <SelectItem
+                        key={item.value ?? "placeholder"}
+                        value={item.value}
+                      >
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </Field>
             <Field>
               <FieldLabel htmlFor="product-price">Price</FieldLabel>
@@ -530,14 +558,26 @@ function RecipeItemRow({
     label: recipeUnitLabels[unit],
     value: unit,
   }))
-  const resolvedUnit =
-    item.unit ?? getDefaultRecipeUnit(ingredient.unit) ?? "g"
+  const resolvedUnit = getResolvedRecipeUnit(item, ingredient.unit)
+  const recipeItemForCost =
+    resolvedUnit && !isCountUnit(ingredient.unit)
+      ? { ...item, unit: resolvedUnit }
+      : item
+  const costBreakdown = formatRecipeItemCostBreakdown(
+    recipeItemForCost,
+    ingredient
+  )
 
   return (
     <div className="flex items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 text-sm">
-      <span className="min-w-0 flex-1 truncate font-medium">
-        {ingredient.name}
-      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">{ingredient.name}</p>
+        {costBreakdown && (
+          <p className="truncate text-[11px] text-muted-foreground">
+            {costBreakdown}
+          </p>
+        )}
+      </div>
       <Input
         type="number"
         min={0}
@@ -553,7 +593,7 @@ function RecipeItemRow({
       {unitOptions.length > 0 && (
         <Select
           items={unitItems}
-          value={resolvedUnit}
+          value={resolvedUnit ?? "g"}
           onValueChange={(value) =>
             onUpdate({ unit: value as RecipeDisplayUnit })
           }
@@ -581,7 +621,7 @@ function RecipeItemRow({
         </span>
       )}
       <span className="w-20 shrink-0 text-right font-mono text-muted-foreground">
-        {formatCurrency(computeRecipeItemCost(item, ingredient))}
+        {formatCurrency(computeRecipeItemCost(recipeItemForCost, ingredient))}
       </span>
       <Button type="button" variant="ghost" size="icon-xs" onClick={onRemove}>
         <X />
