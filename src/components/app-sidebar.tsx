@@ -7,10 +7,16 @@ import {
   Coffee,
   FolderOpen,
   LayoutDashboard,
+  Plus,
   ReceiptText,
   Wheat,
 } from "lucide-react";
+import { toast } from "sonner";
 
+import {
+  SaleFormDialog,
+  type SaleFormValues,
+} from "@/components/sales/sale-form-dialog";
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +28,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useSales } from "@/lib/data-provider";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -33,6 +40,13 @@ const navItems = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const { add: addSale } = useSales();
+  const [saleFormOpen, setSaleFormOpen] = React.useState(false);
+
+  function handleAddSale(values: SaleFormValues) {
+    addSale(values);
+    toast.success("Sale logged");
+  }
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -54,6 +68,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent className="flex flex-col gap-2">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Log sales"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+                  onClick={() => setSaleFormOpen(true)}
+                >
+                  <Plus />
+                  <span>Log sales</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
             <SidebarMenu>
               {navItems.map((item) => {
                 const isActive =
@@ -91,6 +117,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <SaleFormDialog
+        open={saleFormOpen}
+        onOpenChange={setSaleFormOpen}
+        onSubmit={handleAddSale}
+      />
     </Sidebar>
   );
 }
