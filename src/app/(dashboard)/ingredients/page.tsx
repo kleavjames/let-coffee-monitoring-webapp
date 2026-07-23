@@ -53,6 +53,8 @@ import {
 } from "@/components/ingredients/ingredient-form-dialog"
 import { formatCurrency, getIngredientCostDisplay } from "@/lib/costing"
 import { useIngredients } from "@/lib/data-provider"
+import { usePagination } from "@/lib/use-pagination"
+import { TablePagination } from "@/components/table-pagination"
 import type { Ingredient, IngredientUnit } from "@/lib/types"
 import { IngredientsPageSkeleton } from "@/components/page-skeletons"
 
@@ -93,6 +95,10 @@ export default function IngredientsPage() {
       return ingredient.unit === (unitFilter as IngredientUnit)
     })
   }, [items, searchQuery, unitFilter])
+
+  const pagination = usePagination(filteredItems, {
+    resetKey: `${searchQuery}-${unitFilter}`,
+  })
 
   function handleAddClick() {
     setEditingIngredient(null)
@@ -203,7 +209,7 @@ export default function IngredientsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredItems.map((ingredient) => {
+                pagination.paginatedItems.map((ingredient) => {
                   const costDisplay = getIngredientCostDisplay(ingredient)
                   return (
                   <TableRow key={ingredient.id}>
@@ -261,6 +267,13 @@ export default function IngredientsPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.setPage}
+          />
         </CardContent>
       </Card>
 

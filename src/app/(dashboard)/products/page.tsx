@@ -69,6 +69,8 @@ import { useCategories, useIngredients, useProducts } from "@/lib/data-provider"
 import { getRecipeItemKey, isProductRecipeItem, formatProductRecipeQuantity } from "@/lib/recipe";
 import type { Product } from "@/lib/types";
 import { formatRecipeQuantity } from "@/lib/units";
+import { usePagination } from "@/lib/use-pagination";
+import { TablePagination } from "@/components/table-pagination";
 import { ProductsPageSkeleton } from "@/components/page-skeletons";
 
 export default function ProductsPage() {
@@ -114,6 +116,10 @@ export default function ProductsPage() {
       return product.categoryId === categoryFilter;
     });
   }, [products, searchQuery, categoryFilter]);
+
+  const pagination = usePagination(filteredProducts, {
+    resetKey: `${searchQuery}-${categoryFilter}`,
+  });
 
   function handleAddClick() {
     setEditingProduct(null);
@@ -227,7 +233,7 @@ export default function ProductsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredProducts.map((product) => {
+                pagination.paginatedItems.map((product) => {
                   const cost = computeProductCost(product, ingredients, products);
                   const marginPercent = computeMarginPercent(
                     product,
@@ -408,6 +414,13 @@ export default function ProductsPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.setPage}
+          />
         </CardContent>
       </Card>
 

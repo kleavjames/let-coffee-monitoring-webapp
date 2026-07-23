@@ -42,6 +42,8 @@ import {
   type CategoryFormValues,
 } from "@/components/categories/category-form-dialog"
 import { useCategories } from "@/lib/data-provider"
+import { usePagination } from "@/lib/use-pagination"
+import { TablePagination } from "@/components/table-pagination"
 import type { ProductCategory } from "@/lib/types"
 import { CategoriesPageSkeleton } from "@/components/page-skeletons"
 
@@ -52,6 +54,7 @@ export default function CategoriesPage() {
     React.useState<ProductCategory | null>(null)
   const [deleteTarget, setDeleteTarget] =
     React.useState<ProductCategory | null>(null)
+  const pagination = usePagination(items)
 
   function handleAddClick() {
     setEditingCategory(null)
@@ -133,7 +136,7 @@ export default function CategoriesPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                items.map((category) => {
+                pagination.paginatedItems.map((category) => {
                   const productCount = products.filter(
                     (product) => product.categoryId === category.id
                   ).length
@@ -175,6 +178,13 @@ export default function CategoriesPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            totalItems={pagination.totalItems}
+            totalPages={pagination.totalPages}
+            onPageChange={pagination.setPage}
+          />
         </CardContent>
       </Card>
 

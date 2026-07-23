@@ -32,6 +32,8 @@ import {
 } from "@/components/sales/sale-form-dialog"
 import { formatCurrency, getSaleTotal } from "@/lib/costing"
 import { useExpenses, useProducts, useSales } from "@/lib/data-provider"
+import { usePagination } from "@/lib/use-pagination"
+import { TablePagination } from "@/components/table-pagination"
 import {
   ExpensesTableSkeleton,
   SalesTableSkeleton,
@@ -55,6 +57,8 @@ export default function SalesPage() {
   const sortedExpenses = [...expenses].sort((a, b) =>
     a.date < b.date ? 1 : -1
   )
+  const salesPagination = usePagination(sortedSales)
+  const expensesPagination = usePagination(sortedExpenses)
 
   const totalSales = sales.reduce(
     (sum, sale) => sum + getSaleTotal(sale),
@@ -119,6 +123,7 @@ export default function SalesPage() {
               {salesLoading ? (
                 <SalesTableSkeleton />
               ) : (
+                <>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -141,7 +146,7 @@ export default function SalesPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      sortedSales.map((sale) => {
+                      salesPagination.paginatedItems.map((sale) => {
                         const product = products.find(
                           (p) => p.id === sale.productId
                         )
@@ -178,6 +183,14 @@ export default function SalesPage() {
                     )}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  page={salesPagination.page}
+                  pageSize={salesPagination.pageSize}
+                  totalItems={salesPagination.totalItems}
+                  totalPages={salesPagination.totalPages}
+                  onPageChange={salesPagination.setPage}
+                />
+                </>
               )}
             </CardContent>
           </Card>
@@ -210,6 +223,7 @@ export default function SalesPage() {
               {expensesLoading ? (
                 <ExpensesTableSkeleton />
               ) : (
+                <>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -231,7 +245,7 @@ export default function SalesPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      sortedExpenses.map((expense) => (
+                      expensesPagination.paginatedItems.map((expense) => (
                         <TableRow key={expense.id}>
                           <TableCell className="font-mono text-muted-foreground">
                             {expense.date}
@@ -260,6 +274,14 @@ export default function SalesPage() {
                     )}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  page={expensesPagination.page}
+                  pageSize={expensesPagination.pageSize}
+                  totalItems={expensesPagination.totalItems}
+                  totalPages={expensesPagination.totalPages}
+                  onPageChange={expensesPagination.setPage}
+                />
+                </>
               )}
             </CardContent>
           </Card>
