@@ -62,9 +62,13 @@ export default function SalesPage() {
   )
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
 
-  function handleAddSale(values: SaleFormValues) {
-    addSale(values)
-    toast.success("Sale logged")
+  function handleAddSale(values: SaleFormValues[]) {
+    for (const sale of values) {
+      addSale(sale)
+    }
+    toast.success(
+      values.length === 1 ? "Sale logged" : `${values.length} sales logged`
+    )
   }
 
   function handleAddExpense(values: ExpenseFormValues) {

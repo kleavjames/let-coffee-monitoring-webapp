@@ -44,9 +44,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { add: addSale } = useSales();
   const [saleFormOpen, setSaleFormOpen] = React.useState(false);
 
-  function handleAddSale(values: SaleFormValues) {
-    addSale(values);
-    toast.success("Sale logged");
+  function handleAddSale(values: SaleFormValues[]) {
+    for (const sale of values) {
+      addSale(sale);
+    }
+    toast.success(
+      values.length === 1 ? "Sale logged" : `${values.length} sales logged`
+    );
   }
 
   return (
