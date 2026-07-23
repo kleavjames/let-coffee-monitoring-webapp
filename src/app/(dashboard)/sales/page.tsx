@@ -30,7 +30,7 @@ import {
   SaleFormDialog,
   type SaleFormValues,
 } from "@/components/sales/sale-form-dialog"
-import { formatCurrency } from "@/lib/costing"
+import { formatCurrency, getSaleTotal } from "@/lib/costing"
 import { useExpenses, useProducts, useSales } from "@/lib/data-provider"
 import {
   ExpensesTableSkeleton,
@@ -57,7 +57,7 @@ export default function SalesPage() {
   )
 
   const totalSales = sales.reduce(
-    (sum, sale) => sum + sale.quantity * sale.unitPrice,
+    (sum, sale) => sum + getSaleTotal(sale),
     0
   )
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0)
@@ -156,7 +156,7 @@ export default function SalesPage() {
                               {formatCurrency(sale.unitPrice)}
                             </TableCell>
                             <TableCell className="font-mono">
-                              {formatCurrency(sale.quantity * sale.unitPrice)}
+                              {formatCurrency(getSaleTotal(sale))}
                             </TableCell>
                             <TableCell>
                               <Button

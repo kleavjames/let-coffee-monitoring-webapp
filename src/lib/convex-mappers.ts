@@ -59,6 +59,7 @@ export function toSale(doc: Doc<"sales">): Sale {
     productId: doc.productId,
     quantity: doc.quantity,
     unitPrice: doc.unitPrice,
+    amount: doc.amount,
   }
 }
 

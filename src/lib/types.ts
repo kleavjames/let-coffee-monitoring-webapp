@@ -41,6 +41,7 @@ export type Sale = {
   productId: string
   quantity: number
   unitPrice: number
+  amount?: number
 }
 
 export type ExpenseCategory =

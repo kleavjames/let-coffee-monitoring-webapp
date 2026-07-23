@@ -126,7 +126,11 @@ function SaleForm({
   )
   const selectedProduct = sellableProducts.find((p) => p.id === values.productId)
   const unitPrice = selectedProduct?.price ?? 0
-  const total = values.quantity * unitPrice
+  const computedTotal = values.quantity * unitPrice
+  const displayTotal =
+    values.amount !== undefined && values.amount > 0
+      ? values.amount
+      : computedTotal
 
   const productItems = sellableProducts.map((p) => ({
     value: p.id,
@@ -141,6 +145,9 @@ function SaleForm({
     onSubmit({
       ...values,
       unitPrice: selectedProduct.price,
+      ...(values.amount !== undefined && values.amount > 0
+        ? { amount: values.amount }
+        : {}),
     })
     onOpenChange(false)
   }
@@ -230,13 +237,38 @@ function SaleForm({
             required
           />
         </Field>
+        <Field>
+          <FieldLabel htmlFor="sale-amount">Amount (optional)</FieldLabel>
+          <Input
+            id="sale-amount"
+            type="number"
+            min={0}
+            step="0.01"
+            value={values.amount ?? ""}
+            onChange={(e) => {
+              const next = e.target.value
+              setValues((v) => ({
+                ...v,
+                amount:
+                  next === "" ? undefined : Number(next),
+              }))
+            }}
+            placeholder={
+              selectedProduct
+                ? `Calculated: ${formatCurrency(computedTotal)}`
+                : "Override total amount"
+            }
+          />
+        </Field>
         <div className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm">
           <span className="text-muted-foreground">
             {selectedProduct
-              ? `${formatCurrency(unitPrice)} × ${values.quantity}`
+              ? values.amount !== undefined && values.amount > 0
+                ? "Custom amount"
+                : `${formatCurrency(unitPrice)} × ${values.quantity}`
               : "Total"}
           </span>
-          <span className="font-medium">{formatCurrency(total)}</span>
+          <span className="font-medium">{formatCurrency(displayTotal)}</span>
         </div>
       </FieldGroup>
       <DialogFooter>

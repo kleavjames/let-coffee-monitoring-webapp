@@ -197,6 +197,7 @@ export function useSales() {
         productId: toProductId(sale.productId),
         quantity: sale.quantity,
         unitPrice: sale.unitPrice,
+        ...(sale.amount !== undefined ? { amount: sale.amount } : {}),
       })
     },
     [create]

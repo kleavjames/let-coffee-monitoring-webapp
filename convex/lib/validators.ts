@@ -70,6 +70,7 @@ export const saleDocValidator = v.object({
   productId: v.id("products"),
   quantity: v.number(),
   unitPrice: v.number(),
+  amount: v.optional(v.number()),
 })
 
 export const expenseDocValidator = v.object({

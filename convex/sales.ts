@@ -18,6 +18,7 @@ export const create = mutation({
     productId: v.id("products"),
     quantity: v.number(),
     unitPrice: v.number(),
+    amount: v.optional(v.number()),
   },
   returns: v.id("sales"),
   handler: async (ctx, args) => {
@@ -26,6 +27,7 @@ export const create = mutation({
       productId: args.productId,
       quantity: args.quantity,
       unitPrice: args.unitPrice,
+      ...(args.amount !== undefined ? { amount: args.amount } : {}),
     })
   },
 })

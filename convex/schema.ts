@@ -42,6 +42,7 @@ export default defineSchema({
     productId: v.id("products"),
     quantity: v.number(),
     unitPrice: v.number(),
+    amount: v.optional(v.number()),
   }).index("by_date", ["date"]),
 
   expenses: defineTable({
