@@ -21,10 +21,15 @@ export function isVolumeUnit(unit: IngredientUnit): boolean {
   return VOLUME_UNITS.has(unit)
 }
 
+export function isOzUnit(unit: IngredientUnit): boolean {
+  return unit === "oz"
+}
+
 export function getDefaultRecipeUnit(
   ingredientUnit: IngredientUnit
 ): RecipeDisplayUnit | undefined {
   if (isCountUnit(ingredientUnit)) return undefined
+  if (isOzUnit(ingredientUnit)) return "oz"
   if (isWeightUnit(ingredientUnit)) return "g"
   if (isVolumeUnit(ingredientUnit)) return "ml"
   return "g"
@@ -34,6 +39,7 @@ export function getRecipeUnitOptions(
   ingredientUnit: IngredientUnit
 ): RecipeDisplayUnit[] {
   if (isCountUnit(ingredientUnit)) return []
+  if (isOzUnit(ingredientUnit)) return ["oz", "g"]
   if (isWeightUnit(ingredientUnit)) return ["g", "oz"]
   if (isVolumeUnit(ingredientUnit)) return ["ml", "oz"]
   return RECIPE_DISPLAY_UNITS
@@ -87,6 +93,12 @@ export function toIngredientQuantity(
     return ingredientUnit === "kg" ? grams / 1000 : grams
   }
 
+  if (isOzUnit(ingredientUnit)) {
+    if (unit === "oz") return quantity
+    if (unit === "g") return quantity / GRAMS_PER_OZ
+    return 0
+  }
+
   if (isVolumeUnit(ingredientUnit)) {
     let milliliters: number
     if (unit === "ml") milliliters = quantity
@@ -120,6 +132,12 @@ export function toBaseRecipeQuantity(
       return { amount: quantity * GRAMS_PER_OZ, unit: "g" }
     }
     return { amount: 0, unit: "g" }
+  }
+
+  if (isOzUnit(ingredientUnit)) {
+    if (unit === "oz") return { amount: quantity, unit: "oz" }
+    if (unit === "g") return { amount: quantity / GRAMS_PER_OZ, unit: "oz" }
+    return { amount: 0, unit: "oz" }
   }
 
   if (isVolumeUnit(ingredientUnit)) {

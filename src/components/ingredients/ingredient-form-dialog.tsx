@@ -34,6 +34,7 @@ const unitItems: { label: string; value: IngredientUnit }[] = [
   { label: "Kilograms (kg)", value: "kg" },
   { label: "Milliliters (ml)", value: "ml" },
   { label: "Liters (l)", value: "l" },
+  { label: "Ounces (oz)", value: "oz" },
   { label: "Pieces (pcs)", value: "pcs" },
   { label: "Pack", value: "pack" },
 ]
