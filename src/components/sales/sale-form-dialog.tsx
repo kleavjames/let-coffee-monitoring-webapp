@@ -55,7 +55,6 @@ export function SaleFormDialog({
       <DialogContent className="sm:max-w-md">
         <SaleForm
           key={String(open)}
-          open={open}
           onOpenChange={onOpenChange}
           onSubmit={onSubmit}
         />
@@ -65,20 +64,14 @@ export function SaleFormDialog({
 }
 
 function SaleForm({
-  open,
   onOpenChange,
   onSubmit,
 }: {
-  open: boolean
   onOpenChange: (open: boolean) => void
   onSubmit: (values: SaleFormValues) => void
 }) {
   const { items: products } = useProducts()
   const [values, setValues] = React.useState<SaleFormState>(emptyValues)
-
-  React.useEffect(() => {
-    if (open) setValues(emptyValues())
-  }, [open])
 
   const sellableProducts = products.filter(
     (p) => p.status === "active" && !p.special && p.price != null && p.price > 0

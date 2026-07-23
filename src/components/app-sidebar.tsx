@@ -79,7 +79,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 Built for the remote grind
               </span>
               <span className="font-mono text-[10px] tracking-wide text-sidebar-foreground/60 uppercase">
-                v0.1 · local data only
+                v0.1 · Convex
               </span>
             </div>
           </SidebarMenuItem>
