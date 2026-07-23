@@ -1,6 +1,8 @@
 import { getSaleTotal } from "@/lib/costing"
 import type { Expense, Product, Sale } from "@/lib/types"
 
+const PH_TIMEZONE = "Asia/Manila"
+
 export type DashboardSummaryCard = {
   label: string
   value: string
@@ -23,13 +25,44 @@ export type DashboardRecentSale = {
 }
 
 function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: PH_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date())
+}
+
+function toManilaDate(isoDate: string): Date {
+  return new Date(`${isoDate}T12:00:00+08:00`)
 }
 
 function addDays(isoDate: string, days: number): string {
-  const date = new Date(`${isoDate}T00:00:00`)
-  date.setDate(date.getDate() + days)
-  return date.toISOString().slice(0, 10)
+  const date = toManilaDate(isoDate)
+  date.setUTCDate(date.getUTCDate() + days)
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: PH_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date)
+}
+
+function getWeekStart(isoDate: string): string {
+  const dayOfWeek = toManilaDate(isoDate).getUTCDay()
+  const daysSinceMonday = (dayOfWeek + 6) % 7
+  return addDays(isoDate, -daysSinceMonday)
+}
+
+function getWeekRange(isoDate: string): { start: string; end: string } {
+  const start = getWeekStart(isoDate)
+  return { start, end: addDays(start, 6) }
+}
+
+function getLastWeekRange(today: string): { start: string; end: string } {
+  const thisWeekStart = getWeekStart(today)
+  const start = addDays(thisWeekStart, -7)
+  return { start, end: addDays(start, 6) }
 }
 
 function sumSalesInRange(sales: Sale[], start: string, end: string): number {
@@ -68,8 +101,11 @@ function formatPercentChange(
 }
 
 function formatChartDate(isoDate: string): string {
-  const date = new Date(`${isoDate}T00:00:00`)
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+  return toManilaDate(isoDate).toLocaleDateString("en-PH", {
+    timeZone: PH_TIMEZONE,
+    month: "short",
+    day: "numeric",
+  })
 }
 
 function formatRecentSaleDate(isoDate: string, today: string): string {
@@ -86,16 +122,31 @@ export function buildDashboardSummary(
 ): DashboardSummaryCard[] {
   const today = todayIso()
   const yesterday = addDays(today, -1)
-  const weekStart = addDays(today, -6)
-  const lastWeekStart = addDays(today, -13)
-  const lastWeekEnd = addDays(today, -7)
+  const thisWeek = getWeekRange(today)
+  const lastWeek = getLastWeekRange(today)
 
   const todaySales = sumSalesInRange(sales, today, today)
   const yesterdaySales = sumSalesInRange(sales, yesterday, yesterday)
-  const thisWeekRevenue = sumSalesInRange(sales, weekStart, today)
-  const lastWeekRevenue = sumSalesInRange(sales, lastWeekStart, lastWeekEnd)
-  const thisWeekExpenses = sumExpensesInRange(expenses, weekStart, today)
-  const lastWeekExpenses = sumExpensesInRange(expenses, lastWeekStart, lastWeekEnd)
+  const thisWeekRevenue = sumSalesInRange(
+    sales,
+    thisWeek.start,
+    today
+  )
+  const lastWeekRevenue = sumSalesInRange(
+    sales,
+    lastWeek.start,
+    lastWeek.end
+  )
+  const thisWeekExpenses = sumExpensesInRange(
+    expenses,
+    thisWeek.start,
+    today
+  )
+  const lastWeekExpenses = sumExpensesInRange(
+    expenses,
+    lastWeek.start,
+    lastWeek.end
+  )
   const thisWeekProfit = thisWeekRevenue - thisWeekExpenses
   const lastWeekProfit = lastWeekRevenue - lastWeekExpenses
 
@@ -117,21 +168,21 @@ export function buildDashboardSummary(
       value: formatValue(thisWeekRevenue),
       trend: weekRevenueTrend?.label ?? null,
       trendUp: weekRevenueTrend?.trendUp ?? true,
-      description: "vs. last week",
+      description: "Mon–today · vs. last week",
     },
     {
       label: "This Week's Expenses",
       value: formatValue(thisWeekExpenses),
       trend: weekExpensesTrend?.label ?? null,
       trendUp: weekExpensesTrend ? !weekExpensesTrend.trendUp : false,
-      description: "vs. last week",
+      description: "Mon–today · vs. last week",
     },
     {
       label: "Net Profit",
       value: formatValue(thisWeekProfit),
       trend: weekProfitTrend?.label ?? null,
       trendUp: weekProfitTrend?.trendUp ?? true,
-      description: "this week · vs. last week",
+      description: "Mon–today · vs. last week",
     },
   ]
 }
