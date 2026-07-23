@@ -51,6 +51,7 @@ import {
 import {
   computeMarginPercent,
   computeProductCost,
+  computeProductMargin,
   computeProductRecipeItemCost,
   computeRecipeItemCost,
   formatCurrency,
@@ -120,7 +121,7 @@ export default function ProductsPage() {
                 <TableHead>Category</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Cost</TableHead>
-                <TableHead>Margin</TableHead>
+                <TableHead>Margin / Profit</TableHead>
                 <TableHead>Recipe</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-10" />
@@ -140,6 +141,11 @@ export default function ProductsPage() {
                 products.map((product) => {
                   const cost = computeProductCost(product, ingredients, products);
                   const marginPercent = computeMarginPercent(
+                    product,
+                    ingredients,
+                    products,
+                  );
+                  const profit = computeProductMargin(
                     product,
                     ingredients,
                     products,
@@ -171,15 +177,22 @@ export default function ProductsPage() {
                       </TableCell>
                       <TableCell>
                         {hasPrice ? (
-                          <Badge
-                            variant={
-                              marginPercent >= 0 ? "secondary" : "destructive"
-                            }
-                          >
-                            <span className="font-mono">
+                          <div className="flex items-center gap-2 font-mono text-sm">
+                            <Badge
+                              variant={
+                                marginPercent >= 0 ? "secondary" : "destructive"
+                              }
+                            >
                               {marginPercent.toFixed(0)}%
+                            </Badge>
+                            <span
+                              className={
+                                profit < 0 ? "text-destructive" : "text-muted-foreground"
+                              }
+                            >
+                              / {formatCurrency(profit)}
                             </span>
-                          </Badge>
+                          </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">—</span>
                         )}
