@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { MoreHorizontal, Plus } from "lucide-react"
+import { MoreHorizontal, Plus, Search } from "lucide-react"
 import { toast } from "sonner"
 
 import {
@@ -24,6 +24,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,7 +53,18 @@ import {
 } from "@/components/ingredients/ingredient-form-dialog"
 import { formatCurrency, getIngredientCostDisplay } from "@/lib/costing"
 import { useIngredients } from "@/lib/data-provider"
-import type { Ingredient } from "@/lib/types"
+import type { Ingredient, IngredientUnit } from "@/lib/types"
+
+const unitFilterItems: { label: string; value: string }[] = [
+  { label: "All units", value: "all" },
+  { label: "Grams (g)", value: "g" },
+  { label: "Kilograms (kg)", value: "kg" },
+  { label: "Milliliters (ml)", value: "ml" },
+  { label: "Liters (l)", value: "l" },
+  { label: "Ounces (oz)", value: "oz" },
+  { label: "Pieces (pcs)", value: "pcs" },
+  { label: "Pack", value: "pack" },
+]
 
 export default function IngredientsPage() {
   const { items, add, update, remove } = useIngredients()
@@ -54,6 +74,24 @@ export default function IngredientsPage() {
   const [deleteTarget, setDeleteTarget] = React.useState<Ingredient | null>(
     null
   )
+  const [searchQuery, setSearchQuery] = React.useState("")
+  const [unitFilter, setUnitFilter] = React.useState("all")
+
+  const filteredItems = React.useMemo(() => {
+    const query = searchQuery.trim().toLowerCase()
+
+    return items.filter((ingredient) => {
+      if (query && !ingredient.name.toLowerCase().includes(query)) {
+        return false
+      }
+
+      if (unitFilter === "all") {
+        return true
+      }
+
+      return ingredient.unit === (unitFilter as IngredientUnit)
+    })
+  }, [items, searchQuery, unitFilter])
 
   function handleAddClick() {
     setEditingIngredient(null)
@@ -98,6 +136,38 @@ export default function IngredientsPage() {
           </CardAction>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                aria-label="Search ingredients by name"
+                placeholder="Search by name..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Select
+              items={unitFilterItems}
+              value={unitFilter}
+              onValueChange={(value) =>
+                setUnitFilter((value as string | null) ?? "all")
+              }
+            >
+              <SelectTrigger className="w-full sm:w-52">
+                <SelectValue placeholder="All units" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {unitFilterItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -118,8 +188,17 @@ export default function IngredientsPage() {
                     No ingredients yet. Add your first one to get started.
                   </TableCell>
                 </TableRow>
+              ) : filteredItems.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    No ingredients match your search or filter.
+                  </TableCell>
+                </TableRow>
               ) : (
-                items.map((ingredient) => {
+                filteredItems.map((ingredient) => {
                   const costDisplay = getIngredientCostDisplay(ingredient)
                   return (
                   <TableRow key={ingredient.id}>

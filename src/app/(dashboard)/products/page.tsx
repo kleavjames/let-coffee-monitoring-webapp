@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MoreHorizontal, Plus } from "lucide-react";
+import { MoreHorizontal, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -24,6 +24,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -70,6 +79,40 @@ export default function ProductsPage() {
     null,
   );
   const [deleteTarget, setDeleteTarget] = React.useState<Product | null>(null);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [categoryFilter, setCategoryFilter] = React.useState("all");
+
+  const categoryFilterItems = React.useMemo(
+    () => [
+      { label: "All categories", value: "all" },
+      { label: "Uncategorized", value: "uncategorized" },
+      ...categories.map((category) => ({
+        label: category.name,
+        value: category.id,
+      })),
+    ],
+    [categories],
+  );
+
+  const filteredProducts = React.useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return products.filter((product) => {
+      if (query && !product.name.toLowerCase().includes(query)) {
+        return false;
+      }
+
+      if (categoryFilter === "all") {
+        return true;
+      }
+
+      if (categoryFilter === "uncategorized") {
+        return !product.categoryId && !product.special;
+      }
+
+      return product.categoryId === categoryFilter;
+    });
+  }, [products, searchQuery, categoryFilter]);
 
   function handleAddClick() {
     setEditingProduct(null);
@@ -114,6 +157,38 @@ export default function ProductsPage() {
           </CardAction>
         </CardHeader>
         <CardContent>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                aria-label="Search products by name"
+                placeholder="Search by name..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="pl-8"
+              />
+            </div>
+            <Select
+              items={categoryFilterItems}
+              value={categoryFilter}
+              onValueChange={(value) =>
+                setCategoryFilter((value as string | null) ?? "all")
+              }
+            >
+              <SelectTrigger className="w-full sm:w-52">
+                <SelectValue placeholder="All categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {categoryFilterItems.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -137,8 +212,17 @@ export default function ProductsPage() {
                     No products yet. Add your first one to get started.
                   </TableCell>
                 </TableRow>
+              ) : filteredProducts.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={8}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    No products match your search or filter.
+                  </TableCell>
+                </TableRow>
               ) : (
-                products.map((product) => {
+                filteredProducts.map((product) => {
                   const cost = computeProductCost(product, ingredients, products);
                   const marginPercent = computeMarginPercent(
                     product,
