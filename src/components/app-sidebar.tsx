@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -57,9 +58,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:p-1.5!"
               render={<Link href="/" />}
             >
-              <Coffee className="size-5!" />
+              <Image
+                src="/logo.png"
+                alt="Let Coffee logo"
+                width={20}
+                height={20}
+                className="size-5! shrink-0 rounded-sm"
+              />
               <span className="text-base font-semibold tracking-tight">
-                Let Coffee
+                <span className="text-primary">Let</span> Coffee
               </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
