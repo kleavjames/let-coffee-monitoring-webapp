@@ -1,7 +1,8 @@
 "use client"
 
+import { useMemo } from "react"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-import { ArrowDownRight, ArrowUpRight, TrendingUp } from "lucide-react"
+import { ArrowDownRight, ArrowUpRight } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import {
@@ -18,6 +19,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { DashboardSkeleton } from "@/components/page-skeletons"
 import {
   Table,
   TableBody,
@@ -26,55 +28,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  buildDashboardSummary,
+  buildRecentSales,
+  buildSalesChartData,
+} from "@/lib/dashboard-stats"
 import { formatCurrency } from "@/lib/costing"
-
-const summaryCards = [
-  {
-    label: "Today's Sales",
-    value: formatCurrency(1850),
-    trend: "+12.5%",
-    trendUp: true,
-    description: "vs. yesterday",
-  },
-  {
-    label: "This Week's Revenue",
-    value: formatCurrency(12480),
-    trend: "+8.1%",
-    trendUp: true,
-    description: "vs. last week",
-  },
-  {
-    label: "Total Expenses",
-    value: formatCurrency(6300),
-    trend: "-3.2%",
-    trendUp: false,
-    description: "vs. last week",
-  },
-  {
-    label: "Net Profit",
-    value: formatCurrency(6180),
-    trend: "+15.4%",
-    trendUp: true,
-    description: "vs. last week",
-  },
-]
-
-const salesChartData = [
-  { date: "Jul 10", sales: 1120 },
-  { date: "Jul 11", sales: 1340 },
-  { date: "Jul 12", sales: 980 },
-  { date: "Jul 13", sales: 1560 },
-  { date: "Jul 14", sales: 1890 },
-  { date: "Jul 15", sales: 1420 },
-  { date: "Jul 16", sales: 1750 },
-  { date: "Jul 17", sales: 2010 },
-  { date: "Jul 18", sales: 1680 },
-  { date: "Jul 19", sales: 1930 },
-  { date: "Jul 20", sales: 2210 },
-  { date: "Jul 21", sales: 1990 },
-  { date: "Jul 22", sales: 1740 },
-  { date: "Jul 23", sales: 1850 },
-]
+import { useExpenses, useProducts, useSales } from "@/lib/data-provider"
 
 const salesChartConfig = {
   sales: {
@@ -83,15 +43,27 @@ const salesChartConfig = {
   },
 } satisfies ChartConfig
 
-const recentSales = [
-  { id: 1, product: "Cafe Latte", quantity: 5, total: 600, date: "Today, 10:24 AM" },
-  { id: 2, product: "Espresso", quantity: 3, total: 255, date: "Today, 9:58 AM" },
-  { id: 3, product: "Iced Latte", quantity: 6, total: 780, date: "Today, 9:30 AM" },
-  { id: 4, product: "Cappuccino", quantity: 4, total: 480, date: "Yesterday, 4:12 PM" },
-  { id: 5, product: "Cafe Mocha", quantity: 2, total: 260, date: "Yesterday, 2:05 PM" },
-]
-
 export default function DashboardPage() {
+  const { items: sales, isLoading: salesLoading } = useSales()
+  const { items: expenses, isLoading: expensesLoading } = useExpenses()
+  const { items: products, isLoading: productsLoading } = useProducts()
+
+  const isLoading = salesLoading || expensesLoading || productsLoading
+
+  const summaryCards = useMemo(
+    () => buildDashboardSummary(sales, expenses, formatCurrency),
+    [sales, expenses]
+  )
+  const salesChartData = useMemo(() => buildSalesChartData(sales), [sales])
+  const recentSales = useMemo(
+    () => buildRecentSales(sales, products),
+    [sales, products]
+  )
+
+  if (isLoading) {
+    return <DashboardSkeleton />
+  }
+
   return (
     <div className="flex flex-col gap-4 lg:gap-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -102,16 +74,18 @@ export default function DashboardPage() {
               <CardTitle className="font-mono text-2xl font-semibold tracking-tight">
                 {card.value}
               </CardTitle>
-              <CardAction>
-                <Badge variant={card.trendUp ? "secondary" : "destructive"}>
-                  {card.trendUp ? (
-                    <ArrowUpRight data-icon="inline-start" />
-                  ) : (
-                    <ArrowDownRight data-icon="inline-start" />
-                  )}
-                  <span className="font-mono">{card.trend}</span>
-                </Badge>
-              </CardAction>
+              {card.trend ? (
+                <CardAction>
+                  <Badge variant={card.trendUp ? "secondary" : "destructive"}>
+                    {card.trendUp ? (
+                      <ArrowUpRight data-icon="inline-start" />
+                    ) : (
+                      <ArrowDownRight data-icon="inline-start" />
+                    )}
+                    <span className="font-mono">{card.trend}</span>
+                  </Badge>
+                </CardAction>
+              ) : null}
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
               {card.description}
@@ -123,7 +97,7 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Sales per day</CardTitle>
-          <CardDescription>Last 14 days · sample data</CardDescription>
+          <CardDescription>Last 14 days from logged sales</CardDescription>
         </CardHeader>
         <CardContent>
           <ChartContainer
@@ -171,7 +145,7 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Recent Sales</CardTitle>
-          <CardDescription>Sample data · latest transactions</CardDescription>
+          <CardDescription>Latest logged transactions</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
@@ -184,28 +158,33 @@ export default function DashboardPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {recentSales.map((sale) => (
-                <TableRow key={sale.id}>
-                  <TableCell className="font-medium">{sale.product}</TableCell>
-                  <TableCell className="font-mono">{sale.quantity}</TableCell>
-                  <TableCell className="font-mono">
-                    {formatCurrency(sale.total)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-muted-foreground">
-                    {sale.date}
+              {recentSales.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    No sales logged yet.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                recentSales.map((sale) => (
+                  <TableRow key={sale.id}>
+                    <TableCell className="font-medium">{sale.product}</TableCell>
+                    <TableCell className="font-mono">{sale.quantity}</TableCell>
+                    <TableCell className="font-mono">
+                      {formatCurrency(sale.total)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-muted-foreground">
+                      {sale.date}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
-
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <TrendingUp className="size-4" />
-        Dashboard numbers are sample data for now — this will be wired up to
-        real sales once you start logging them.
-      </div>
     </div>
   )
 }
