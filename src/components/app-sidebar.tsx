@@ -3,11 +3,13 @@
 import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuthActions } from "@convex-dev/auth/react";
 import {
   Coffee,
   FolderOpen,
   LayoutDashboard,
+  LogOut,
   Plus,
   ReceiptText,
   Wheat,
@@ -41,8 +43,11 @@ const navItems = [
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useAuthActions();
   const { add: addSale } = useSales();
   const [saleFormOpen, setSaleFormOpen] = React.useState(false);
+  const [signingOut, setSigningOut] = React.useState(false);
 
   function handleAddSale(values: SaleFormValues[]) {
     for (const sale of values) {
@@ -51,6 +56,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     toast.success(
       values.length === 1 ? "Sale logged" : `${values.length} sales logged`
     );
+  }
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await signOut();
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to sign out"
+      );
+    } finally {
+      setSigningOut(false);
+    }
   }
 
   return (
@@ -116,6 +136,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Sign out"
+              disabled={signingOut}
+              onClick={() => void handleSignOut()}
+            >
+              <LogOut />
+              <span>{signingOut ? "Signing out..." : "Sign out"}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <div className="flex flex-col gap-1 px-2 py-1.5 group-data-[collapsible=icon]:hidden">
               <span className="text-xs font-medium text-sidebar-foreground">
