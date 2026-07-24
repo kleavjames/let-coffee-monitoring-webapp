@@ -1,52 +1,52 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useAuthActions } from "@convex-dev/auth/react"
-import { Eye, EyeOff } from "lucide-react"
-import { toast } from "sonner"
+import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Field,
   FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
-} from "@/components/ui/input-group"
-import { Spinner } from "@/components/ui/spinner"
+} from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
 
-export type AuthMode = "signIn" | "signUp"
+export type AuthMode = "signIn" | "signUp";
 
 const copy: Record<
   AuthMode,
   {
-    title: string
-    description: string
-    submitLabel: string
-    switchPrompt: string
-    switchLabel: string
-    switchHref: string
+    title: string;
+    description: string;
+    submitLabel: string;
+    switchPrompt: string;
+    switchLabel: string;
+    switchHref: string;
   }
 > = {
   signIn: {
     title: "Sign in",
-    description: "Enter your email and password to access the dashboard.",
+    description: "Enter your username and password to access the dashboard.",
     submitLabel: "Sign in",
     switchPrompt: "Don't have an account?",
     switchLabel: "Sign up",
@@ -60,41 +60,47 @@ const copy: Record<
     switchLabel: "Sign in",
     switchHref: "/login",
   },
-}
+};
 
 function getAuthErrorMessage(error: unknown) {
   if (error instanceof Error) {
-    return error.message
+    return error.message;
   }
-  return "Authentication failed. Please try again."
+  return "Authentication failed. Please try again.";
 }
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
-  const router = useRouter()
-  const { signIn } = useAuthActions()
-  const [showPassword, setShowPassword] = React.useState(false)
-  const [pending, setPending] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
-  const text = copy[mode]
+  const router = useRouter();
+  const { signIn } = useAuthActions();
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [pending, setPending] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const text = copy[mode];
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError(null)
+    event.preventDefault();
+    setError(null);
 
-    const formData = new FormData(event.currentTarget)
-    formData.set("flow", mode === "signIn" ? "signIn" : "signUp")
+    const formData = new FormData(event.currentTarget);
+    formData.set("flow", mode === "signIn" ? "signIn" : "signUp");
+    formData.set(
+      "username",
+      String(formData.get("username") ?? "")
+        .trim()
+        .toLowerCase(),
+    );
 
-    setPending(true)
+    setPending(true);
     try {
-      await signIn("password", formData)
-      router.push("/")
-      router.refresh()
+      await signIn("password", formData);
+      router.push("/");
+      router.refresh();
     } catch (caught) {
-      const message = getAuthErrorMessage(caught)
-      setError(message)
-      toast.error(message)
+      const message = getAuthErrorMessage(caught);
+      setError(message);
+      toast.error(message);
     } finally {
-      setPending(false)
+      setPending(false);
     }
   }
 
@@ -113,16 +119,27 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
               </Field>
             )}
             <Field>
-              <FieldLabel htmlFor="email">Email</FieldLabel>
+              <FieldLabel htmlFor="username">Username</FieldLabel>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@letcoffee.com"
-                autoComplete="email"
+                id="username"
+                name="username"
+                type="text"
+                placeholder="yourname"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                minLength={3}
+                maxLength={16}
+                pattern="[a-zA-Z0-9_]+"
                 disabled={pending}
                 required
               />
+              {mode === "signUp" && (
+                <FieldDescription>
+                  3–32 characters. Letters, numbers, and underscores only.
+                </FieldDescription>
+              )}
             </Field>
             <Field>
               <FieldLabel htmlFor="password">Password</FieldLabel>
@@ -172,5 +189,5 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }
