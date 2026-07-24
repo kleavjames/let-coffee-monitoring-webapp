@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 
 import { mutation, query } from "./_generated/server"
+import { requireAuth } from "./lib/auth"
 import {
   ingredientDocValidator,
   ingredientUnitValidator,
@@ -10,6 +11,7 @@ export const list = query({
   args: {},
   returns: v.array(ingredientDocValidator),
   handler: async (ctx) => {
+    await requireAuth(ctx)
     return await ctx.db.query("ingredients").collect()
   },
 })
@@ -24,6 +26,7 @@ export const create = mutation({
   },
   returns: v.id("ingredients"),
   handler: async (ctx, args) => {
+    await requireAuth(ctx)
     return await ctx.db.insert("ingredients", {
       name: args.name.trim(),
       unit: args.unit,
@@ -45,6 +48,7 @@ export const update = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireAuth(ctx)
     await ctx.db.patch(args.id, {
       name: args.name.trim(),
       unit: args.unit,
@@ -62,6 +66,7 @@ export const remove = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireAuth(ctx)
     await ctx.db.delete(args.id)
     return null
   },

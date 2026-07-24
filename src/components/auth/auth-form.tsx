@@ -2,7 +2,10 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useAuthActions } from "@convex-dev/auth/react"
 import { Eye, EyeOff } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -12,7 +15,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
   InputGroup,
@@ -23,11 +32,6 @@ import {
 import { Spinner } from "@/components/ui/spinner"
 
 export type AuthMode = "signIn" | "signUp"
-
-export type AuthFormValues = {
-  email: string
-  password: string
-}
 
 const copy: Record<
   AuthMode,
@@ -58,28 +62,37 @@ const copy: Record<
   },
 }
 
-export function AuthForm({
-  mode,
-  onSubmit,
-}: {
-  mode: AuthMode
-  onSubmit?: (values: AuthFormValues) => void | Promise<void>
-}) {
+function getAuthErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+  return "Authentication failed. Please try again."
+}
+
+export function AuthForm({ mode }: { mode: AuthMode }) {
+  const router = useRouter()
+  const { signIn } = useAuthActions()
   const [showPassword, setShowPassword] = React.useState(false)
   const [pending, setPending] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
   const text = copy[mode]
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setError(null)
+
     const formData = new FormData(event.currentTarget)
-    const values: AuthFormValues = {
-      email: String(formData.get("email") ?? ""),
-      password: String(formData.get("password") ?? ""),
-    }
+    formData.set("flow", mode === "signIn" ? "signIn" : "signUp")
 
     setPending(true)
     try {
-      await onSubmit?.(values)
+      await signIn("password", formData)
+      router.push("/")
+      router.refresh()
+    } catch (caught) {
+      const message = getAuthErrorMessage(caught)
+      setError(message)
+      toast.error(message)
     } finally {
       setPending(false)
     }
@@ -94,6 +107,11 @@ export function AuthForm({
       <CardContent>
         <form onSubmit={handleSubmit}>
           <FieldGroup>
+            {error && (
+              <Field data-invalid>
+                <FieldError>{error}</FieldError>
+              </Field>
+            )}
             <Field>
               <FieldLabel htmlFor="email">Email</FieldLabel>
               <Input
@@ -125,7 +143,9 @@ export function AuthForm({
                   <InputGroupButton
                     type="button"
                     size="icon-xs"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                     onClick={() => setShowPassword((value) => !value)}
                   >
                     {showPassword ? <EyeOff /> : <Eye />}

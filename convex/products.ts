@@ -1,6 +1,7 @@
 import { v } from "convex/values"
 
 import { mutation, query } from "./_generated/server"
+import { requireAuth } from "./lib/auth"
 import {
   productDocValidator,
   productStatusValidator,
@@ -11,6 +12,7 @@ export const list = query({
   args: {},
   returns: v.array(productDocValidator),
   handler: async (ctx) => {
+    await requireAuth(ctx)
     return await ctx.db.query("products").collect()
   },
 })
@@ -26,6 +28,7 @@ export const create = mutation({
   },
   returns: v.id("products"),
   handler: async (ctx, args) => {
+    await requireAuth(ctx)
     return await ctx.db.insert("products", {
       name: args.name.trim(),
       categoryId: args.categoryId,
@@ -49,6 +52,7 @@ export const update = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireAuth(ctx)
     await ctx.db.patch(args.id, {
       name: args.name.trim(),
       categoryId: args.categoryId,
@@ -67,6 +71,7 @@ export const remove = mutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await requireAuth(ctx)
     await ctx.db.delete(args.id)
     return null
   },
