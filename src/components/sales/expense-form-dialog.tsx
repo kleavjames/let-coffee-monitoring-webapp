@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/dialog";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -20,13 +20,13 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { formatCurrency } from "@/lib/costing"
-import { useIngredients } from "@/lib/data-provider"
-import type { Expense, ExpenseCategory } from "@/lib/types"
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { formatCurrency } from "@/lib/costing";
+import { useIngredients } from "@/lib/data-provider";
+import type { Expense, ExpenseCategory } from "@/lib/types";
 
-export type ExpenseFormValues = Omit<Expense, "id">
+export type ExpenseFormValues = Omit<Expense, "id">;
 
 const categoryItems: { label: string; value: ExpenseCategory }[] = [
   { label: "Ingredients", value: "Ingredients" },
@@ -34,10 +34,10 @@ const categoryItems: { label: string; value: ExpenseCategory }[] = [
   { label: "Utilities", value: "Utilities" },
   { label: "Staff", value: "Staff" },
   { label: "Other", value: "Other" },
-]
+];
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  return new Date().toISOString().slice(0, 10);
 }
 
 function emptyValues(): ExpenseFormValues {
@@ -46,15 +46,15 @@ function emptyValues(): ExpenseFormValues {
     category: "Ingredients",
     description: "",
     amount: 0,
-  }
+  };
 }
 
 function formatIngredientQuantity(value: number): string {
-  if (Number.isInteger(value)) return value.toLocaleString()
+  if (Number.isInteger(value)) return value.toLocaleString();
   return value.toLocaleString(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
-  })
+  });
 }
 
 export function ExpenseFormDialog({
@@ -62,9 +62,9 @@ export function ExpenseFormDialog({
   onOpenChange,
   onSubmit,
 }: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSubmit: (values: ExpenseFormValues) => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (values: ExpenseFormValues) => void;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -76,30 +76,30 @@ export function ExpenseFormDialog({
         />
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
 function ExpenseForm({
   onOpenChange,
   onSubmit,
 }: {
-  onOpenChange: (open: boolean) => void
-  onSubmit: (values: ExpenseFormValues) => void
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (values: ExpenseFormValues) => void;
 }) {
-  const { items: ingredients } = useIngredients()
-  const [values, setValues] = React.useState<ExpenseFormValues>(emptyValues)
-  const [ingredientId, setIngredientId] = React.useState<string | null>(null)
-  const [ingredientQuantity, setIngredientQuantity] = React.useState(0)
+  const { items: ingredients } = useIngredients();
+  const [values, setValues] = React.useState<ExpenseFormValues>(emptyValues);
+  const [ingredientId, setIngredientId] = React.useState<string | null>(null);
+  const [ingredientQuantity, setIngredientQuantity] = React.useState(0);
 
-  const isIngredientsCategory = values.category === "Ingredients"
+  const isIngredientsCategory = values.category === "Ingredients";
   const selectedIngredient = ingredients.find(
-    (ingredient) => ingredient.id === ingredientId
-  )
-  const hasIngredientSelected = Boolean(selectedIngredient)
+    (ingredient) => ingredient.id === ingredientId,
+  );
+  const hasIngredientSelected = Boolean(selectedIngredient);
   const computedIngredientAmount =
     selectedIngredient && ingredientQuantity > 0
       ? selectedIngredient.purchasePrice * ingredientQuantity
-      : 0
+      : 0;
 
   const ingredientItems = [
     { label: "Select ingredient (optional)", value: null as string | null },
@@ -107,33 +107,33 @@ function ExpenseForm({
       label: `${ingredient.name} (${ingredient.unit})`,
       value: ingredient.id,
     })),
-  ]
+  ];
 
   function handleCategoryChange(category: ExpenseCategory) {
-    setValues((v) => ({ ...v, category }))
+    setValues((v) => ({ ...v, category }));
     if (category !== "Ingredients") {
-      setIngredientId(null)
-      setIngredientQuantity(0)
+      setIngredientId(null);
+      setIngredientQuantity(0);
     }
   }
 
   function handleSubmit(event: React.FormEvent) {
-    event.preventDefault()
+    event.preventDefault();
 
     if (isIngredientsCategory && hasIngredientSelected) {
-      if (!selectedIngredient || ingredientQuantity <= 0) return
+      if (!selectedIngredient || ingredientQuantity <= 0) return;
       onSubmit({
         ...values,
         description: `${selectedIngredient.name} restock (×${formatIngredientQuantity(ingredientQuantity)})`,
         amount: computedIngredientAmount,
-      })
-      onOpenChange(false)
-      return
+      });
+      onOpenChange(false);
+      return;
     }
 
-    if (!values.description.trim() || values.amount <= 0) return
-    onSubmit(values)
-    onOpenChange(false)
+    if (!values.description.trim() || values.amount <= 0) return;
+    onSubmit(values);
+    onOpenChange(false);
   }
 
   return (
@@ -158,7 +158,10 @@ function ExpenseForm({
               <SelectTrigger id="expense-category" className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent searchable searchPlaceholder="Search categories...">
+              <SelectContent
+                searchable
+                searchPlaceholder="Search categories..."
+              >
                 <SelectGroup>
                   {categoryItems.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
@@ -191,14 +194,17 @@ function ExpenseForm({
                 items={ingredientItems}
                 value={ingredientId}
                 onValueChange={(value) => {
-                  setIngredientId(value as string | null)
-                  if (!value) setIngredientQuantity(0)
+                  setIngredientId(value as string | null);
+                  if (!value) setIngredientQuantity(0);
                 }}
               >
                 <SelectTrigger id="expense-ingredient" className="w-full">
                   <SelectValue placeholder="Select ingredient (optional)" />
                 </SelectTrigger>
-                <SelectContent searchable searchPlaceholder="Search ingredients...">
+                <SelectContent
+                  searchable
+                  searchPlaceholder="Search ingredients..."
+                >
                   <SelectGroup>
                     {ingredientItems.map((item) => (
                       <SelectItem
@@ -222,9 +228,7 @@ function ExpenseForm({
                 min={1}
                 step="1"
                 value={ingredientQuantity || ""}
-                onChange={(e) =>
-                  setIngredientQuantity(Number(e.target.value))
-                }
+                onChange={(e) => setIngredientQuantity(Number(e.target.value))}
                 placeholder="e.g. 3"
                 disabled={!hasIngredientSelected}
               />
@@ -232,7 +236,7 @@ function ExpenseForm({
             {hasIngredientSelected && ingredientQuantity > 0 && (
               <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
                 <span className="text-muted-foreground">
-                  {formatCurrency(selectedIngredient.purchasePrice)} ×{" "}
+                  {formatCurrency(selectedIngredient?.purchasePrice ?? 0)} ×{" "}
                   {formatIngredientQuantity(ingredientQuantity)}:{" "}
                 </span>
                 <span className="font-medium font-mono">
@@ -281,5 +285,5 @@ function ExpenseForm({
         <Button type="submit">Add expense</Button>
       </DialogFooter>
     </form>
-  )
+  );
 }
