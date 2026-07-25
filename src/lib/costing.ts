@@ -1,4 +1,4 @@
-import type { Ingredient, IngredientUnit, Product, RecipeItem } from "@/lib/types"
+import type { Ingredient, IngredientUnit, Product, RecipeItem, Sale } from "@/lib/types"
 import { isProductRecipeItem } from "@/lib/recipe"
 import {
   getResolvedRecipeUnit,
@@ -205,6 +205,15 @@ export function computeProjectedPrices(cost: number): ProjectedPrice[] {
 }
 
 const CURRENCY_SYMBOL = "₱"
+
+export function getSaleTotal(
+  sale: Pick<Sale, "quantity" | "unitPrice" | "amount">
+): number {
+  if (sale.amount !== undefined && sale.amount > 0) {
+    return sale.amount
+  }
+  return sale.quantity * sale.unitPrice
+}
 
 export function formatCurrency(value: number): string {
   return `${CURRENCY_SYMBOL}${value.toLocaleString(undefined, {

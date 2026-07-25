@@ -162,7 +162,7 @@ function IngredientForm({
             <SelectTrigger id="ingredient-unit" className="w-full">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent searchable searchPlaceholder="Search units...">
               <SelectGroup>
                 {unitItems.map((item) => (
                   <SelectItem key={item.value} value={item.value}>

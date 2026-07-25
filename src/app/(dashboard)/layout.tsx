@@ -2,7 +2,6 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { Toaster } from "@/components/ui/sonner"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { AppDataProvider } from "@/lib/data-provider"
 
 export default function DashboardLayout({
   children,
@@ -10,7 +9,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   return (
-    <AppDataProvider>
+    <>
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
@@ -21,6 +20,6 @@ export default function DashboardLayout({
         </SidebarInset>
       </SidebarProvider>
       <Toaster />
-    </AppDataProvider>
+    </>
   )
 }

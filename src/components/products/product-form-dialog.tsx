@@ -359,7 +359,7 @@ function ProductForm({
                 <SelectTrigger id="product-category" className="w-full">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent searchable searchPlaceholder="Search categories...">
                   <SelectGroup>
                     {categoryItems.map((item) => (
                       <SelectItem
@@ -485,7 +485,7 @@ function ProductForm({
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select ingredient or special product" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent searchable searchPlaceholder="Search ingredients or products...">
                     <SelectGroup>
                       {recipePickerItems.map((item) => (
                         <SelectItem

@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { formatCurrency, getIngredientCostPerUnit } from "@/lib/costing"
+import { formatCurrency } from "@/lib/costing"
 import { useIngredients } from "@/lib/data-provider"
 import type { Expense, ExpenseCategory } from "@/lib/types"
 
@@ -98,7 +98,7 @@ function ExpenseForm({
   const hasIngredientSelected = Boolean(selectedIngredient)
   const computedIngredientAmount =
     selectedIngredient && ingredientQuantity > 0
-      ? getIngredientCostPerUnit(selectedIngredient) * ingredientQuantity
+      ? selectedIngredient.purchasePrice * ingredientQuantity
       : 0
 
   const ingredientItems = [
@@ -124,7 +124,7 @@ function ExpenseForm({
       if (!selectedIngredient || ingredientQuantity <= 0) return
       onSubmit({
         ...values,
-        description: `${selectedIngredient.name} restock (${formatIngredientQuantity(ingredientQuantity)} ${selectedIngredient.unit})`,
+        description: `${selectedIngredient.name} restock (×${formatIngredientQuantity(ingredientQuantity)})`,
         amount: computedIngredientAmount,
       })
       onOpenChange(false)
@@ -158,7 +158,7 @@ function ExpenseForm({
               <SelectTrigger id="expense-category" className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent searchable searchPlaceholder="Search categories...">
                 <SelectGroup>
                   {categoryItems.map((item) => (
                     <SelectItem key={item.value} value={item.value}>
@@ -198,7 +198,7 @@ function ExpenseForm({
                 <SelectTrigger id="expense-ingredient" className="w-full">
                   <SelectValue placeholder="Select ingredient (optional)" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent searchable searchPlaceholder="Search ingredients...">
                   <SelectGroup>
                     {ingredientItems.map((item) => (
                       <SelectItem
@@ -216,28 +216,25 @@ function ExpenseForm({
               <FieldLabel htmlFor="expense-ingredient-quantity">
                 Quantity
               </FieldLabel>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="expense-ingredient-quantity"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={ingredientQuantity || ""}
-                  onChange={(e) =>
-                    setIngredientQuantity(Number(e.target.value))
-                  }
-                  placeholder="e.g. 5000"
-                  disabled={!hasIngredientSelected}
-                  className="flex-1"
-                />
-                <span className="shrink-0 text-sm text-muted-foreground">
-                  {selectedIngredient?.unit ?? "—"}
-                </span>
-              </div>
+              <Input
+                id="expense-ingredient-quantity"
+                type="number"
+                min={1}
+                step="1"
+                value={ingredientQuantity || ""}
+                onChange={(e) =>
+                  setIngredientQuantity(Number(e.target.value))
+                }
+                placeholder="e.g. 3"
+                disabled={!hasIngredientSelected}
+              />
             </Field>
             {hasIngredientSelected && ingredientQuantity > 0 && (
               <div className="rounded-lg bg-muted/50 px-3 py-2 text-sm">
-                <span className="text-muted-foreground">Amount: </span>
+                <span className="text-muted-foreground">
+                  {formatCurrency(selectedIngredient.purchasePrice)} ×{" "}
+                  {formatIngredientQuantity(ingredientQuantity)}:{" "}
+                </span>
                 <span className="font-medium font-mono">
                   {formatCurrency(computedIngredientAmount)}
                 </span>

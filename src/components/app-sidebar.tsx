@@ -1,10 +1,25 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Coffee, FolderOpen, LayoutDashboard, ReceiptText, Wheat } from "lucide-react"
+import * as React from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuthActions } from "@convex-dev/auth/react";
+import {
+  Coffee,
+  FolderOpen,
+  LayoutDashboard,
+  LogOut,
+  Plus,
+  ReceiptText,
+  Wheat,
+} from "lucide-react";
+import { toast } from "sonner";
 
+import {
+  SaleFormDialog,
+  type SaleFormValues,
+} from "@/components/sales/sale-form-dialog";
 import {
   Sidebar,
   SidebarContent,
@@ -15,18 +30,48 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
+import { useSales } from "@/lib/data-provider";
 
 const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Products", url: "/products", icon: Coffee },
-  { title: "Categories", url: "/categories", icon: FolderOpen },
   { title: "Sales", url: "/sales", icon: ReceiptText },
+  { title: "Products", url: "/products", icon: Coffee },
   { title: "Ingredients", url: "/ingredients", icon: Wheat },
-]
+  { title: "Categories", url: "/categories", icon: FolderOpen },
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const pathname = usePathname()
+  const pathname = usePathname();
+  const router = useRouter();
+  const { signOut } = useAuthActions();
+  const { add: addSale } = useSales();
+  const [saleFormOpen, setSaleFormOpen] = React.useState(false);
+  const [signingOut, setSigningOut] = React.useState(false);
+
+  function handleAddSale(values: SaleFormValues[]) {
+    for (const sale of values) {
+      addSale(sale);
+    }
+    toast.success(
+      values.length === 1 ? "Sale logged" : `${values.length} sales logged`
+    );
+  }
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await signOut();
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to sign out"
+      );
+    } finally {
+      setSigningOut(false);
+    }
+  }
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -37,9 +82,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:p-1.5!"
               render={<Link href="/" />}
             >
-              <Coffee className="size-5!" />
+              <Image
+                src="/logo.png"
+                alt="Let Coffee logo"
+                width={20}
+                height={20}
+                className="size-5! shrink-0 rounded-sm"
+              />
               <span className="text-base font-semibold tracking-tight">
-                Let Coffee
+                <span className="text-primary">Let</span> Coffee
               </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -49,11 +100,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarGroup>
           <SidebarGroupContent className="flex flex-col gap-2">
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Log sales"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+                  onClick={() => setSaleFormOpen(true)}
+                >
+                  <Plus />
+                  <span>Log sales</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+            <SidebarMenu>
               {navItems.map((item) => {
                 const isActive =
                   item.url === "/"
                     ? pathname === "/"
-                    : pathname.startsWith(item.url)
+                    : pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
@@ -65,7 +128,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                       <span>{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                )
+                );
               })}
             </SidebarMenu>
           </SidebarGroupContent>
@@ -74,17 +137,32 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="Sign out"
+              disabled={signingOut}
+              onClick={() => void handleSignOut()}
+            >
+              <LogOut />
+              <span>{signingOut ? "Signing out..." : "Sign out"}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
             <div className="flex flex-col gap-1 px-2 py-1.5 group-data-[collapsible=icon]:hidden">
               <span className="text-xs font-medium text-sidebar-foreground">
                 Built for the remote grind
               </span>
               <span className="font-mono text-[10px] tracking-wide text-sidebar-foreground/60 uppercase">
-                v0.1 · local data only
+                v0.1 · Convex
               </span>
             </div>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <SaleFormDialog
+        open={saleFormOpen}
+        onOpenChange={setSaleFormOpen}
+        onSubmit={handleAddSale}
+      />
     </Sidebar>
-  )
+  );
 }
